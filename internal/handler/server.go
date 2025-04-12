@@ -6,6 +6,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/rizkysr90/rizkiplastik-be/internal/config"
+	"github.com/rizkysr90/rizkiplastik-be/internal/handler/authentication"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/products"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
 )
@@ -14,10 +16,11 @@ import (
 type Server struct {
 	router *gin.Engine
 	db     *pgxpool.Pool
+	cfg    *config.Config
 }
 
 // NewServer initializes and configures the server
-func NewServer(db *pgxpool.Pool) *Server {
+func NewServer(db *pgxpool.Pool, cfg *config.Config) *Server {
 	// Set Gin mode - options: debug, release, test
 	// For production, you should use release mode
 	gin.SetMode(gin.DebugMode)
@@ -34,11 +37,14 @@ func NewServer(db *pgxpool.Pool) *Server {
 	// Configure CORS
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
+	config.AllowHeaders = []string{"Authorization", "Content-Type"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	router.Use(cors.New(config))
 
 	server := &Server{
 		router: router,
 		db:     db,
+		cfg:    cfg,
 	}
 
 	// Register routes
@@ -60,8 +66,15 @@ func (s *Server) registerRoutes() {
 			"message": "Welcome to Gin API with CORS and logging",
 		})
 	})
+	// Authentication routes
+	authenticationHandler := authentication.NewAuthHandler(s.db, s.cfg)
+	authenticationHandler.RegisterRoutes(s.router)
+
+	// Initialize auth middleware
+	authMiddleware := middleware.NewAuthMiddleware(s.db, s.cfg)
+
 	// Product routes
 	productHandler := products.NewProductHandler(s.db)
-	productHandler.RegisterRoutes(s.router)
+	productHandler.RegisterRoutes(s.router, authMiddleware)
 
 }

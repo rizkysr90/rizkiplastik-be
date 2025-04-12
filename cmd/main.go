@@ -38,7 +38,7 @@ func main() {
 	defer dbpool.Close()
 
 	// Start the server
-	server := handler.NewServer(dbpool)
+	server := handler.NewServer(dbpool, cfg)
 
 	log.Printf("Server starting on port %s", cfg.ServerPort)
 	if err := server.Run(":" + cfg.ServerPort); err != nil {

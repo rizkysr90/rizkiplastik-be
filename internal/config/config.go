@@ -16,6 +16,7 @@ type Config struct {
 	ServerPort string
 	LogPath    string
 	PostgreSQL PostgreSQLConfig
+	JWTSecret  string
 }
 
 // PostgreSQLConfig holds PostgreSQL database configuration
@@ -66,6 +67,7 @@ func LoadFromEnv() (*Config, error) {
 			MaxConnLifetime: time.Duration(pgMaxConnLifetime) * time.Second,
 			MaxConnIdleTime: time.Duration(pgMaxConnIdleTime) * time.Second,
 		},
+		JWTSecret: getEnv("JWT_SECRET", ""),
 	}
 
 	return config, nil

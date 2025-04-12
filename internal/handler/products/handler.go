@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
 )
 
 // ProductHandler handles HTTP requests for products
@@ -24,14 +25,29 @@ func NewProductHandler(db *pgxpool.Pool) *ProductHandler {
 }
 
 // RegisterRoutes registers all product-related routes
-func (h *ProductHandler) RegisterRoutes(router *gin.Engine) {
-	api := router.Group("/api/v1/products")
+func (h *ProductHandler) RegisterRoutes(
+	router *gin.Engine,
+	authMiddleware *middleware.AuthMiddleware) {
+	// Public routes (no authentication required)
+	// public := router.Group("/api/v1/products")
+	// {
+	// 	public.GET("", h.GetProducts)    // Anyone can list products
+	// 	public.GET("/:id", h.GetProduct) // Anyone can view a product
+	// }
+	// Private Routes without role
+	private := router.Group("api/v1/products")
+	private.Use(authMiddleware.RequireAuth())
 	{
-		api.POST("", h.CreateProduct)
-		api.PUT("/:id", h.UpdateProduct)
-		api.DELETE("/:id", h.DeleteProduct)
-		api.GET("/:id", h.GetProduct)
-		api.GET("", h.GetProducts)
+		private.GET("", h.GetProducts)    // Anyone can list products
+		private.GET("/:id", h.GetProduct) // Anyone can view a product
+	}
+	// Admin routes (only admin can access)
+	admin := router.Group("/api/v1/products")
+	admin.Use(authMiddleware.RequireAuth(), authMiddleware.RequireRole("ADMIN"))
+	{
+		admin.POST("", h.CreateProduct)
+		admin.PUT("/:id", h.UpdateProduct)
+		admin.DELETE("/:id", h.DeleteProduct)
 	}
 }
 
