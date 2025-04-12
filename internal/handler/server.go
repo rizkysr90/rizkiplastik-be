@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rizkysr90/rizkiplastik-be/internal/config"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/authentication"
+	"github.com/rizkysr90/rizkiplastik-be/internal/handler/onlinetransactions"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/products"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
 )
@@ -76,5 +77,10 @@ func (s *Server) registerRoutes() {
 	// Product routes
 	productHandler := products.NewProductHandler(s.db)
 	productHandler.RegisterRoutes(s.router, authMiddleware)
+
+	// Online transaction routes
+
+	onlineTransactionHandler := onlinetransactions.NewOnlineTransactions(s.db)
+	onlineTransactionHandler.RegisterRoutes(s.router, authMiddleware)
 
 }

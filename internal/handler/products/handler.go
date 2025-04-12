@@ -192,7 +192,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 	}
 
 	// Calculate shopee sale price and fee
-	product.ShopeeSalePrice, product.ShopeeFee = calculateShopeePricing(
+	product.ShopeeSalePrice, product.ShopeeFee = CalculateShopeePricing(
 		product.CostPrice,
 		product.GrossProfitPercentage,
 		product.ShopeeCategory,
@@ -271,7 +271,7 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 		}
 
 		// Calculate shopee sale price and fee
-		product.ShopeeSalePrice, product.ShopeeFee = calculateShopeePricing(
+		product.ShopeeSalePrice, product.ShopeeFee = CalculateShopeePricing(
 			product.CostPrice,
 			product.GrossProfitPercentage,
 			product.ShopeeCategory,

@@ -2,8 +2,8 @@ package products
 
 import "math"
 
-// calculateShopeePricing calculates the Shopee sale price and fee based on the formula
-func calculateShopeePricing(costPrice, grossProfitPercentage float32, category string) (salePrice, fee float32) {
+// CalculateShopeePricing calculates the Shopee sale price and fee based on the formula
+func CalculateShopeePricing(costPrice, grossProfitPercentage float32, category string) (salePrice, fee float32) {
 	// 1. Find gross_profit_price_total = ROUND(cost_price * (gross_profit_percentage / 100) + cost_price)
 	grossProfitPriceTotal := float32(math.Round(float64(costPrice*(grossProfitPercentage/100) + costPrice)))
 
