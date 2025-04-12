@@ -76,7 +76,7 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 
 	_, err := h.db.Exec(c, query,
 		product.ID,
-		product.Name,
+		strings.ToUpper(product.Name),
 		product.CostPrice,
 		product.GrossProfitPercentage,
 		strings.ToUpper(product.ShopeeCategory),
@@ -109,15 +109,17 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	now := time.Now().UTC()
 	query := `
 		UPDATE products
-		SET name = $1, gross_profit_percentage = $2, shopee_category = $3, updated_at = $4
-		WHERE id = $5 AND deleted_at IS NULL
+		SET name = $1, gross_profit_percentage = $2, shopee_category = $3, updated_at = $4,
+		cost_price = $5
+		WHERE id = $6 AND deleted_at IS NULL
 	`
 
 	result, err := h.db.Exec(c, query,
-		req.Name,
+		strings.ToUpper(req.Name),
 		req.GrossProfitPercentage,
 		strings.ToUpper(req.ShopeeCategory),
 		now,
+		req.CostPrice,
 		productID,
 	)
 	if err != nil {

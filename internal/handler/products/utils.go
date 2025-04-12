@@ -34,5 +34,9 @@ func calculateShopeePricing(costPrice, grossProfitPercentage float32, category s
 	// 4. Calculate sale price
 	salePrice = fee + grossProfitPriceTotal
 
+	// 5. Round to 2 decimal places
+	fee = float32(math.Round(float64(fee)*100) / 100)
+	salePrice = float32(math.Round(float64(salePrice)*100) / 100)
+
 	return salePrice, fee
 }

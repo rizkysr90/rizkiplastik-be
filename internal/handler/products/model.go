@@ -13,6 +13,7 @@ type UpdateProductRequest struct {
 	Name                  string  `json:"name" binding:"required,max=50"`
 	GrossProfitPercentage float32 `json:"gross_profit_percentage" binding:"required"`
 	ShopeeCategory        string  `json:"shopee_category" binding:"required,oneof=A B C D E"`
+	CostPrice             float32 `json:"cost_price" binding:"required"`
 }
 
 // PaginationResponse represents standard pagination metadata
