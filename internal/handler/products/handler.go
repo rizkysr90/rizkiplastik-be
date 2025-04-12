@@ -28,13 +28,6 @@ func NewProductHandler(db *pgxpool.Pool) *ProductHandler {
 func (h *ProductHandler) RegisterRoutes(
 	router *gin.Engine,
 	authMiddleware *middleware.AuthMiddleware) {
-	// Public routes (no authentication required)
-	// public := router.Group("/api/v1/products")
-	// {
-	// 	public.GET("", h.GetProducts)    // Anyone can list products
-	// 	public.GET("/:id", h.GetProduct) // Anyone can view a product
-	// }
-	// Private Routes without role
 	private := router.Group("api/v1/products")
 	private.Use(authMiddleware.RequireAuth())
 	{

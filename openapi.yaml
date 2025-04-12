@@ -1,0 +1,330 @@
+openapi: 3.0.3
+info:
+  title: RizkiPlastik API
+  description: API for managing products in the RizkiPlastik system
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the product
+        name:
+          type: string
+          maxLength: 50
+          description: Name of the product
+        cost_price:
+          type: number
+          format: float
+          description: The cost price of the product
+        gross_profit_percentage:
+          type: number
+          format: float
+          description: The gross profit percentage for the product
+        shopee_category:
+          type: string
+          enum: [A, B, C, D, E]
+          description: The Shopee category the product belongs to
+        shopee_sale_price:
+          type: number
+          format: float
+          description: The sale price on Shopee (optional)
+        shopee_fee:
+          type: number
+          format: float
+          description: The Shopee platform fee (optional)
+      required:
+        - id
+        - name
+        - cost_price
+        - gross_profit_percentage
+        - shopee_category
+
+    CreateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Name of the product
+        cost_price:
+          type: number
+          format: float
+          description: The cost price of the product
+        gross_profit_percentage:
+          type: number
+          format: float
+          description: The gross profit percentage for the product
+        shopee_category:
+          type: string
+          enum: [A, B, C, D, E]
+          description: The Shopee category the product belongs to
+      required:
+        - name
+        - cost_price
+        - gross_profit_percentage
+        - shopee_category
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Name of the product
+        gross_profit_percentage:
+          type: number
+          format: float
+          description: The gross profit percentage for the product
+        shopee_category:
+          type: string
+          enum: [A, B, C, D, E]
+          description: The Shopee category the product belongs to
+        cost_price:
+          type: number
+          format: float
+          description: The cost price of the product
+      required:
+        - name
+        - gross_profit_percentage
+        - shopee_category
+        - cost_price
+
+    PaginationResponse:
+      type: object
+      properties:
+        page_size:
+          type: integer
+          description: Number of items per page
+        page_number:
+          type: integer
+          description: Current page number
+
+    GetProductsResponse:
+      type: object
+      properties:
+        metadata:
+          $ref: "#/components/schemas/PaginationResponse"
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+
+    GetProductResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/Product"
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+
+  parameters:
+    productIdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Product ID
+
+    pageSizeParam:
+      name: page_size
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 10
+      description: Number of items per page
+
+    pageNumberParam:
+      name: page_number
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 1
+      description: Page number to retrieve
+
+paths:
+  /api/v1/products:
+    get:
+      summary: Get a list of products
+      description: Retrieves a paginated list of products
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/pageSizeParam"
+        - $ref: "#/components/parameters/pageNumberParam"
+      responses:
+        "200":
+          description: A paginated list of products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetProductsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Create a new product
+      description: Creates a new product (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetProductResponse"
+        "400":
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/products/{id}:
+    get:
+      summary: Get a product by ID
+      description: Retrieves a specific product by its ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/productIdParam"
+      responses:
+        "200":
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetProductResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      summary: Update a product
+      description: Updates an existing product (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/productIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+      responses:
+        "200":
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetProductResponse"
+        "400":
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete a product
+      description: Deletes a product (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/productIdParam"
+      responses:
+        "204":
+          description: Product deleted successfully
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
