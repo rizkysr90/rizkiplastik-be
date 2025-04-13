@@ -14,14 +14,6 @@ type CreateTransactionProduct struct {
 	Quantity  int    `json:"quantity" binding:"required,min=1"`
 }
 
-// UpdateOnlineTransactionRequest represents data needed to update an online transaction
-type UpdateOnlineTransactionRequest struct {
-	Type        string                     `json:"type" binding:"required,oneof=SHOPEE LAZADA TOKOPEDIA TIKTOK"`
-	OrderNumber string                     `json:"order_number" binding:"required"`
-	CreatedDate string                     `json:"created_date" binding:"required"` // Format: YYYY-MM-DD
-	Products    []CreateTransactionProduct `json:"products" binding:"required,dive,required"`
-}
-
 // PaginationResponse represents standard pagination metadata
 type PaginationResponse struct {
 	PageSize   int `json:"page_size"`
