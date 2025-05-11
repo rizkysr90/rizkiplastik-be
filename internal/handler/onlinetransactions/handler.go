@@ -496,6 +496,8 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 			colIdx["product_name"] = i
 		case "jumlah":
 			colIdx["quantity"] = i
+		case "nama variasi":
+			colIdx["shopee_varian_name"] = i
 		}
 	}
 	if len(colIdx) < 4 {
@@ -507,11 +509,12 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 	productNames := []string{}
 
 	type RowData struct {
-		RowIdx      int
-		OrderNumber string
-		CreatedDate time.Time
-		ProductName string
-		Quantity    int
+		RowIdx           int
+		OrderNumber      string
+		CreatedDate      time.Time
+		ProductName      string
+		ShopeeVarianName string
+		Quantity         int
 	}
 
 	type OrderData struct {
@@ -532,6 +535,10 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 			results = append(results, map[string]interface{}{"row": rowIdx + 2, "error": "Invalid quantity"})
 			continue
 		}
+		shopeeVarianName := ""
+		if idx, ok := colIdx["shopee_varian_name"]; ok && idx < len(row) {
+			shopeeVarianName = strings.ToUpper(strings.TrimSpace(row[idx]))
+		}
 		// Parse date (handle both date and time formats)
 		createdDate, err := time.Parse("2006-01-02 15:04", createdDateRaw)
 		if err != nil {
@@ -548,22 +555,24 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 		// Group by order number
 		if order, exists := orderMap[orderNumber]; exists {
 			order.Products = append(order.Products, RowData{
-				RowIdx:      rowIdx + 2,
-				OrderNumber: orderNumber,
-				CreatedDate: createdDate,
-				ProductName: productName,
-				Quantity:    quantity,
+				RowIdx:           rowIdx + 2,
+				OrderNumber:      orderNumber,
+				CreatedDate:      createdDate,
+				ProductName:      productName,
+				ShopeeVarianName: shopeeVarianName,
+				Quantity:         quantity,
 			})
 		} else {
 			orderMap[orderNumber] = &OrderData{
 				OrderNumber: orderNumber,
 				CreatedDate: createdDate,
 				Products: []RowData{{
-					RowIdx:      rowIdx + 2,
-					OrderNumber: orderNumber,
-					CreatedDate: createdDate,
-					ProductName: productName,
-					Quantity:    quantity,
+					RowIdx:           rowIdx + 2,
+					OrderNumber:      orderNumber,
+					CreatedDate:      createdDate,
+					ProductName:      productName,
+					ShopeeVarianName: shopeeVarianName,
+					Quantity:         quantity,
 				}},
 			}
 		}
@@ -582,10 +591,18 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 		break
 	}
 
-	// Soft delete existing transactions for this date before processing any orders
+	// Start a single transaction for all orders
 	username, _ := util.GetUsernameFromContext(c)
 	now := time.Now().UTC()
-	_, err = h.db.Exec(c, `
+	tx, err := h.db.Begin(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
+		return
+	}
+	defer tx.Rollback(c)
+
+	// Soft delete existing transactions for this date before processing any orders (inside transaction, before the loop)
+	_, err = tx.Exec(c, `
 		UPDATE online_transactions 
 		SET deleted_at = $1, deleted_by = $2
 		WHERE DATE(created_date) = DATE($3)
@@ -595,14 +612,27 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to soft delete existing transactions: " + err.Error()})
 		return
 	}
+	// Soft delete existing product error logs for this date before processing any orders (inside transaction, before the loop)
+	_, err = tx.Exec(c, `
+		UPDATE product_error_logs 
+		SET deleted_at = $1
+		WHERE DATE(created_date) = DATE($2)
+		AND deleted_at IS NULL
+	`, now, firstOrder.CreatedDate)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to soft delete existing product error logs: " + err.Error()})
+		return
+	}
 
 	// Query all products at once
 	productMap := make(map[string]products.Product)
-
+	if orderMap["250501NXQHV5DQ"] != nil {
+		log.Println(orderMap["250501NXQHV5DQ"])
+	}
 	productRows, err := h.db.Query(c, `
-		SELECT id, name, cost_price, gross_profit_percentage, shopee_category, shopee_name 
+		SELECT id, name, cost_price, gross_profit_percentage, varian_gross_profit_percentage, shopee_category, COALESCE(shopee_varian_name, ''), shopee_name 
 		FROM products 
-		WHERE shopee_name = ANY($1::text[]) 
+		WHERE shopee_name = ANY($1::text[])
 		AND deleted_at IS NULL
 	`, productNames)
 	if err != nil {
@@ -613,19 +643,31 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 
 	for productRows.Next() {
 		var product products.Product
+		var varianGPP sql.NullFloat64
 		err := productRows.Scan(
 			&product.ID,
 			&product.Name,
 			&product.CostPrice,
 			&product.GrossProfitPercentage,
+			&varianGPP,
 			&product.ShopeeCategory,
+			&product.ShopeeVarianName,
 			&product.ShopeeName,
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan product data"})
 			return
 		}
-		productMap[product.ShopeeName] = product
+		if varianGPP.Valid {
+			product.VarianGrossProfitPercentage = float32(varianGPP.Float64)
+		} else {
+			product.VarianGrossProfitPercentage = 0
+		}
+		lookupKey := product.ShopeeName
+		if product.ShopeeVarianName != "" {
+			lookupKey = product.ShopeeName + " " + product.ShopeeVarianName
+		}
+		productMap[lookupKey] = product
 	}
 
 	// Process each order
@@ -636,36 +678,37 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 		var errorRow int
 		var errorMsg string
 
-		// Start a transaction for error logging
-		logTx, err := h.db.Begin(c)
-		if err != nil {
-			results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "error": "Failed to begin error logging transaction"})
-			continue
-		}
-		defer logTx.Rollback(c)
-
 		for _, rowData := range order.Products {
-			product, exists := productMap[rowData.ProductName]
+			lookupKey := rowData.ProductName
+			if rowData.ShopeeVarianName != "" {
+				lookupKey = rowData.ProductName + " " + rowData.ShopeeVarianName
+			}
+			product, exists := productMap[lookupKey]
 			if !exists {
 				hasError = true
 				errorRow = rowData.RowIdx
-				errorMsg = "Product not found: " + rowData.ProductName
+				errorMsg = "Product not found: " + lookupKey
 
-				// Log the error to database
-				_, err = logTx.Exec(c, `
+				// Log the error to database using tx
+				_, err = tx.Exec(c, `
 					INSERT INTO product_error_logs (
 						order_number, created_date, product_name, error_message, created_by
 					) VALUES ($1, $2, $3, $4, $5)
-				`, order.OrderNumber, order.CreatedDate, rowData.ProductName, errorMsg, username)
+				`, order.OrderNumber, order.CreatedDate, lookupKey, errorMsg, username)
 				if err != nil {
 					results = append(results, map[string]interface{}{"row": rowData.RowIdx, "error": "Failed to log product error: " + err.Error()})
-					logTx.Rollback(c)
-					break
+					return
 				}
-				break
+				continue
 			}
 
-			productSalePrice, productFee := products.CalculateShopeePricing(product.CostPrice, product.GrossProfitPercentage, product.ShopeeCategory)
+			var grossProfitPercentage float32
+			if product.ShopeeVarianName != "" && product.VarianGrossProfitPercentage != 0 {
+				grossProfitPercentage = product.VarianGrossProfitPercentage
+			} else {
+				grossProfitPercentage = product.GrossProfitPercentage
+			}
+			productSalePrice, productFee := products.CalculateShopeePricing(product.CostPrice, grossProfitPercentage, product.ShopeeCategory)
 			transactionProducts = append(transactionProducts, TransactionProduct{
 				ProductName: product.Name,
 				CostPrice:   product.CostPrice,
@@ -675,12 +718,6 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 			})
 		}
 
-		// Commit the error logging transaction
-		if err := logTx.Commit(c); err != nil {
-			results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "error": "Failed to commit error logging transaction"})
-			continue
-		}
-
 		if hasError {
 			results = append(results, map[string]interface{}{"row": errorRow, "error": errorMsg})
 			continue
@@ -688,20 +725,8 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 
 		totals := calculateTransactionTotals(transactionProducts)
 
-		tx, err := h.db.Begin(c)
-		if err != nil {
-			results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "error": "Failed to begin transaction"})
-			continue
-		}
-		defer tx.Rollback(c)
-
-		username, _ := util.GetUsernameFromContext(c)
-		periodMonth := int(order.CreatedDate.Month())
-		periodYear := order.CreatedDate.Year()
-		txID := uuid.New()
-		now := time.Now().UTC()
-
 		// Insert transaction
+		uuidOnlineTransaction := uuid.New()
 		transactionQuery := `
 			INSERT INTO online_transactions (
 				id, type, order_number, created_date, period_month, period_year,
@@ -711,12 +736,12 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		`
 		_, err = tx.Exec(c, transactionQuery,
-			txID,
+			uuidOnlineTransaction,
 			"SHOPEE",
 			order.OrderNumber,
 			order.CreatedDate,
-			periodMonth,
-			periodYear,
+			int(order.CreatedDate.Month()),
+			order.CreatedDate.Year(),
 			totals.TotalBaseAmount,
 			totals.TotalSaleAmount,
 			totals.TotalNetProfit,
@@ -726,8 +751,7 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 		)
 		if err != nil {
 			results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "error": "Failed to insert transaction: " + err.Error()})
-			tx.Rollback(c)
-			continue
+			return
 		}
 
 		// Insert products using bulk insert
@@ -747,7 +771,7 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 					paramCount, paramCount+1, paramCount+2, paramCount+3, paramCount+4, paramCount+5, paramCount+6))
 				values = append(values,
 					uuid.New(),
-					txID,
+					uuidOnlineTransaction,
 					product.ProductName,
 					product.CostPrice,
 					product.SalePrice,
@@ -761,17 +785,17 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 			_, err = tx.Exec(c, productQuery, values...)
 			if err != nil {
 				results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "error": "Failed to insert products: " + err.Error()})
-				tx.Rollback(c)
-				continue
+				return
 			}
-		}
-
-		if err := tx.Commit(c); err != nil {
-			results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "error": "Failed to commit transaction"})
-			continue
 		}
 
 		results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "status": "success", "order_number": order.OrderNumber})
 	}
+
+	if err := tx.Commit(c); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"results": results})
 }
