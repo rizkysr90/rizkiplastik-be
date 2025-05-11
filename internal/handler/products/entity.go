@@ -13,6 +13,7 @@ type Product struct {
 	CostPrice             float32    `json:"cost_price"`
 	GrossProfitPercentage float32    `json:"gross_profit_percentage"`
 	ShopeeCategory        string     `json:"shopee_category"`
+	ShopeeName            string     `json:"shopee_name"`
 	ShopeeSalePrice       float32    `json:"shopee_sale_price,omitempty"`
 	ShopeeFee             float32    `json:"shopee_fee,omitempty"`
 	CreatedAt             time.Time  `json:"-"`

@@ -58,13 +58,14 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		CostPrice:             req.CostPrice,
 		GrossProfitPercentage: req.GrossProfitPercentage,
 		ShopeeCategory:        req.ShopeeCategory,
+		ShopeeName:            req.ShopeeName,
 		CreatedAt:             time.Now().UTC(),
 	}
 
 	query := `
 		INSERT INTO products (
-		id, name, cost_price, gross_profit_percentage, shopee_category, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		id, name, cost_price, gross_profit_percentage, shopee_category, shopee_name, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
 	_, err := h.db.Exec(c, query,
@@ -73,6 +74,7 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		product.CostPrice,
 		product.GrossProfitPercentage,
 		strings.ToUpper(product.ShopeeCategory),
+		strings.ToUpper(product.ShopeeName),
 		product.CreatedAt,
 	)
 
@@ -102,15 +104,16 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	now := time.Now().UTC()
 	query := `
 		UPDATE products
-		SET name = $1, gross_profit_percentage = $2, shopee_category = $3, updated_at = $4,
-		cost_price = $5
-		WHERE id = $6 AND deleted_at IS NULL
+		SET name = $1, gross_profit_percentage = $2, shopee_category = $3, shopee_name = $4, updated_at = $5,
+		cost_price = $6
+		WHERE id = $7 AND deleted_at IS NULL
 	`
 
 	result, err := h.db.Exec(c, query,
 		strings.ToUpper(req.Name),
 		req.GrossProfitPercentage,
 		strings.ToUpper(req.ShopeeCategory),
+		strings.ToUpper(req.ShopeeName),
 		now,
 		req.CostPrice,
 		productID,
@@ -169,7 +172,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 
 	var product Product
 	query := `
-		SELECT id, name, cost_price, gross_profit_percentage, shopee_category
+		SELECT id, name, cost_price, gross_profit_percentage, shopee_category, shopee_name
 		FROM products
 		WHERE id = $1 AND deleted_at IS NULL
 	`
@@ -180,6 +183,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 		&product.CostPrice,
 		&product.GrossProfitPercentage,
 		&product.ShopeeCategory,
+		&product.ShopeeName,
 	)
 
 	if err != nil {
@@ -235,7 +239,7 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 
 	// Use a single query with window function for count and data
 	query := `
-		SELECT id, name, cost_price, gross_profit_percentage, shopee_category, 
+		SELECT id, name, cost_price, gross_profit_percentage, shopee_category, shopee_name, 
 		       COUNT(*) OVER() AS total_count
 		FROM products
 		WHERE deleted_at IS NULL AND
@@ -263,6 +267,7 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 			&product.CostPrice,
 			&product.GrossProfitPercentage,
 			&product.ShopeeCategory,
+			&product.ShopeeName,
 			&totalCount,
 		)
 		if err != nil {

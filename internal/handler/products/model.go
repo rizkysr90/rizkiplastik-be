@@ -6,6 +6,7 @@ type CreateProductRequest struct {
 	CostPrice             float32 `json:"cost_price" binding:"required"`
 	GrossProfitPercentage float32 `json:"gross_profit_percentage" binding:"required"`
 	ShopeeCategory        string  `json:"shopee_category" binding:"required,oneof=A B C D E"`
+	ShopeeName            string  `json:"shopee_name" binding:"required,max=100"`
 }
 
 // UpdateProductRequest represents data needed to update a product
@@ -13,6 +14,7 @@ type UpdateProductRequest struct {
 	Name                  string  `json:"name" binding:"required,max=50"`
 	GrossProfitPercentage float32 `json:"gross_profit_percentage" binding:"required"`
 	ShopeeCategory        string  `json:"shopee_category" binding:"required,oneof=A B C D E"`
+	ShopeeName            string  `json:"shopee_name" binding:"required,max=100"`
 	CostPrice             float32 `json:"cost_price" binding:"required"`
 }
 
