@@ -72,7 +72,6 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		CostPrice:             req.CostPrice,
 		GrossProfitPercentage: req.GrossProfitPercentage,
 		ShopeeCategory:        req.ShopeeCategory,
-		ShopeeVarianName:      req.ShopeeVarianName,
 		ShopeeName:            req.ShopeeName,
 		CreatedAt:             time.Now().UTC(),
 	}
