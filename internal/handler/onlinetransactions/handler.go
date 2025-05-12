@@ -486,6 +486,7 @@ type ExcelColumnIndexes struct {
 	ProductName      int
 	Quantity         int
 	ShopeeVarianName int
+	OrderStatus      int
 }
 
 // RowData represents a single row of data from the Excel file
@@ -520,6 +521,8 @@ func findColumnIndexes(headerRow []string) (ExcelColumnIndexes, error) {
 			colIdx.Quantity = i
 		case "nama variasi":
 			colIdx.ShopeeVarianName = i
+		case "status pesanan":
+			colIdx.OrderStatus = i
 		}
 	}
 
@@ -587,7 +590,7 @@ func groupOrdersByOrderNumber(rows []RowData) map[string]*OrderData {
 func (h *Handler) queryProducts(c *gin.Context, productNames []string) (map[string]products.Product, error) {
 	productMap := make(map[string]products.Product)
 	productRows, err := h.db.Query(c, `
-		SELECT id, name, cost_price, gross_profit_percentage, varian_gross_profit_percentage, shopee_category, COALESCE(shopee_varian_name, ''), shopee_name 
+		SELECT id, name, cost_price, gross_profit_percentage, shopee_category, COALESCE(shopee_varian_name, ''), shopee_name 
 		FROM products 
 		WHERE shopee_name = ANY($1::text[])
 		AND deleted_at IS NULL
@@ -599,22 +602,17 @@ func (h *Handler) queryProducts(c *gin.Context, productNames []string) (map[stri
 
 	for productRows.Next() {
 		var product products.Product
-		var varianGPP sql.NullFloat64
 		err := productRows.Scan(
 			&product.ID,
 			&product.Name,
 			&product.CostPrice,
 			&product.GrossProfitPercentage,
-			&varianGPP,
 			&product.ShopeeCategory,
 			&product.ShopeeVarianName,
 			&product.ShopeeName,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan product data: %w", err)
-		}
-		if varianGPP.Valid {
-			product.VarianGrossProfitPercentage = float32(varianGPP.Float64)
 		}
 		lookupKey := product.ShopeeName
 		if product.ShopeeVarianName != "" {
@@ -663,12 +661,7 @@ func (h *Handler) processOrder(
 			continue
 		}
 
-		var grossProfitPercentage float32
-		if product.ShopeeVarianName != "" && product.VarianGrossProfitPercentage != 0 {
-			grossProfitPercentage = product.VarianGrossProfitPercentage
-		} else {
-			grossProfitPercentage = product.GrossProfitPercentage
-		}
+		grossProfitPercentage := product.GrossProfitPercentage
 
 		productSalePrice, productFee := products.CalculateShopeePricing(product.CostPrice, grossProfitPercentage, product.ShopeeCategory)
 		transactionProducts = append(transactionProducts, TransactionProduct{
@@ -861,6 +854,9 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 	var allRows []RowData
 	productNames := []string{}
 	for rowIdx, row := range rows[1:] {
+		if strings.ToLower(row[colIdx.OrderStatus]) == "batal" {
+			continue
+		}
 		rowData, err := parseExcelRow(row, colIdx, rowIdx)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

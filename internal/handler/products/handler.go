@@ -2,6 +2,7 @@ package products
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -205,7 +206,14 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 
 	var product Product
 	query := `
-		SELECT id, name, cost_price, gross_profit_percentage, varian_gross_profit_percentage, shopee_category, shopee_varian_name, shopee_name
+		SELECT id,
+		name, 
+		cost_price, 
+		gross_profit_percentage, 
+		COALESCE(varian_gross_profit_percentage, 0), 
+		shopee_category, 
+		COALESCE(shopee_varian_name, ''), 
+		COALESCE(shopee_name, '')
 		FROM products
 		WHERE id = $1 AND deleted_at IS NULL
 	`
@@ -275,8 +283,16 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 
 	// Use a single query with window function for count and data
 	query := `
-		SELECT id, name, cost_price, gross_profit_percentage, varian_gross_profit_percentage, shopee_category, shopee_varian_name, shopee_name, 
-		       COUNT(*) OVER() AS total_count
+		SELECT 
+			id, 
+			name, 
+			cost_price, 
+			gross_profit_percentage, 
+			varian_gross_profit_percentage, 
+			shopee_category, 
+			COALESCE(shopee_varian_name, ''), 
+			COALESCE(shopee_name, ''), 
+		     COUNT(*) OVER() AS total_count
 		FROM products
 		WHERE deleted_at IS NULL AND
 		($1 = '' OR name ILIKE '%' || $1 || '%')
@@ -309,7 +325,8 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 			&totalCount,
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan product data"})
+			errMessage := fmt.Sprintf("Failed to scan product data: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": errMessage})
 			return
 		}
 
