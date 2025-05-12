@@ -57,6 +57,15 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 	} else {
 		varianGPP = nil
 	}
+
+	// Handle empty variant name
+	var shopeeVarianName interface{}
+	if req.ShopeeVarianName == "" {
+		shopeeVarianName = nil
+	} else {
+		shopeeVarianName = strings.ToUpper(req.ShopeeVarianName)
+	}
+
 	product := Product{
 		ID:                    uuid.New(),
 		Name:                  req.Name,
@@ -81,7 +90,7 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		product.GrossProfitPercentage,
 		varianGPP,
 		strings.ToUpper(product.ShopeeCategory),
-		strings.ToUpper(product.ShopeeVarianName),
+		shopeeVarianName,
 		strings.ToUpper(product.ShopeeName),
 		product.CreatedAt,
 	)
@@ -116,6 +125,15 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	} else {
 		varianGPP = nil
 	}
+
+	// Handle empty variant name
+	var shopeeVarianName interface{}
+	if req.ShopeeVarianName == "" {
+		shopeeVarianName = nil
+	} else {
+		shopeeVarianName = strings.ToUpper(req.ShopeeVarianName)
+	}
+
 	query := `
 		UPDATE products
 		SET name = $1, gross_profit_percentage = $2, varian_gross_profit_percentage = $3, shopee_category = $4, shopee_varian_name = $5, shopee_name = $6, updated_at = $7,
@@ -128,7 +146,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 		req.GrossProfitPercentage,
 		varianGPP,
 		strings.ToUpper(req.ShopeeCategory),
-		strings.ToUpper(req.ShopeeVarianName),
+		shopeeVarianName,
 		strings.ToUpper(req.ShopeeName),
 		now,
 		req.CostPrice,

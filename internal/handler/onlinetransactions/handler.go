@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/products"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
@@ -458,177 +458,134 @@ func calculateTransactionTotals(products []TransactionProduct) TransactionTotals
 	return totals
 }
 
-// AutoInputOnlineTransactions handles Excel upload and auto input
-func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
+// handleExcelFileUpload handles the Excel file upload process and returns the excelize.File
+func handleExcelFileUpload(c *gin.Context) (*excelize.File, error) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File is required"})
-		return
+		return nil, fmt.Errorf("file is required: %w", err)
 	}
+
 	f, err := file.Open()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to open file"})
-		return
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer f.Close()
 
 	xl, err := excelize.OpenReader(f)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read Excel file"})
-		return
-	}
-	sheetName := xl.GetSheetName(0)
-	rows, err := xl.GetRows(sheetName)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read rows from Excel"})
-		return
+		return nil, fmt.Errorf("failed to read Excel file: %w", err)
 	}
 
-	// Find column indexes
-	colIdx := map[string]int{}
-	for i, col := range rows[0] {
+	return xl, nil
+}
+
+// ExcelColumnIndexes represents the column indexes in the Excel file
+type ExcelColumnIndexes struct {
+	OrderNumber      int
+	CreatedDate      int
+	ProductName      int
+	Quantity         int
+	ShopeeVarianName int
+}
+
+// RowData represents a single row of data from the Excel file
+type RowData struct {
+	RowIdx           int
+	OrderNumber      string
+	CreatedDate      time.Time
+	ProductName      string
+	ShopeeVarianName string
+	Quantity         int
+}
+
+// OrderData represents a group of products for a single order
+type OrderData struct {
+	OrderNumber string
+	CreatedDate time.Time
+	Products    []RowData
+}
+
+// findColumnIndexes finds the indexes of required columns in the Excel file
+func findColumnIndexes(headerRow []string) (ExcelColumnIndexes, error) {
+	colIdx := ExcelColumnIndexes{}
+	for i, col := range headerRow {
 		switch strings.TrimSpace(strings.ToLower(col)) {
 		case "no. pesanan":
-			colIdx["order_number"] = i
+			colIdx.OrderNumber = i
 		case "waktu pesanan dibuat":
-			colIdx["created_date"] = i
+			colIdx.CreatedDate = i
 		case "nama produk":
-			colIdx["product_name"] = i
+			colIdx.ProductName = i
 		case "jumlah":
-			colIdx["quantity"] = i
+			colIdx.Quantity = i
 		case "nama variasi":
-			colIdx["shopee_varian_name"] = i
+			colIdx.ShopeeVarianName = i
 		}
 	}
-	if len(colIdx) < 4 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required columns in Excel"})
-		return
+
+	// Validate required columns
+	if colIdx.OrderNumber == 0 && colIdx.CreatedDate == 0 && colIdx.ProductName == 0 && colIdx.Quantity == 0 {
+		return colIdx, fmt.Errorf("missing required columns in Excel")
 	}
 
-	results := []map[string]interface{}{}
-	productNames := []string{}
+	return colIdx, nil
+}
 
-	type RowData struct {
-		RowIdx           int
-		OrderNumber      string
-		CreatedDate      time.Time
-		ProductName      string
-		ShopeeVarianName string
-		Quantity         int
+// parseExcelRow parses a single row from the Excel file
+func parseExcelRow(row []string, colIdx ExcelColumnIndexes, rowIdx int) (RowData, error) {
+	orderNumber := row[colIdx.OrderNumber]
+	createdDateRaw := row[colIdx.CreatedDate]
+	productName := strings.ToUpper(row[colIdx.ProductName])
+	quantityStr := row[colIdx.Quantity]
+	quantity, err := strconv.Atoi(quantityStr)
+	if err != nil {
+		return RowData{}, fmt.Errorf("invalid quantity at row %d", rowIdx+2)
 	}
 
-	type OrderData struct {
-		OrderNumber string
-		CreatedDate time.Time
-		Products    []RowData
+	shopeeVarianName := ""
+	if colIdx.ShopeeVarianName < len(row) {
+		shopeeVarianName = strings.ToUpper(strings.TrimSpace(row[colIdx.ShopeeVarianName]))
 	}
+
+	// Parse date (handle both date and time formats)
+	createdDate, err := time.Parse("2006-01-02 15:04", createdDateRaw)
+	if err != nil {
+		createdDate, err = time.Parse("2006-01-02", createdDateRaw)
+	}
+	if err != nil {
+		return RowData{}, fmt.Errorf("invalid created date at row %d", rowIdx+2)
+	}
+
+	return RowData{
+		RowIdx:           rowIdx + 2,
+		OrderNumber:      orderNumber,
+		CreatedDate:      createdDate,
+		ProductName:      productName,
+		ShopeeVarianName: shopeeVarianName,
+		Quantity:         quantity,
+	}, nil
+}
+
+// groupOrdersByOrderNumber groups rows by order number
+func groupOrdersByOrderNumber(rows []RowData) map[string]*OrderData {
 	orderMap := make(map[string]*OrderData)
-
-	// First pass: collect all product names and row data
-	for rowIdx, row := range rows[1:] {
-		orderNumber := row[colIdx["order_number"]]
-		createdDateRaw := row[colIdx["created_date"]]
-		productName := strings.ToUpper(row[colIdx["product_name"]])
-		quantityStr := row[colIdx["quantity"]]
-		quantity, err := strconv.Atoi(quantityStr)
-		if err != nil {
-			results = append(results, map[string]interface{}{"row": rowIdx + 2, "error": "Invalid quantity"})
-			continue
-		}
-		shopeeVarianName := ""
-		if idx, ok := colIdx["shopee_varian_name"]; ok && idx < len(row) {
-			shopeeVarianName = strings.ToUpper(strings.TrimSpace(row[idx]))
-		}
-		// Parse date (handle both date and time formats)
-		createdDate, err := time.Parse("2006-01-02 15:04", createdDateRaw)
-		if err != nil {
-			createdDate, err = time.Parse("2006-01-02", createdDateRaw)
-		}
-		if err != nil {
-			log.Printf("Failed to parse date '%s': %v", createdDateRaw, err)
-			results = append(results, map[string]interface{}{"row": rowIdx + 2, "error": "Invalid created date"})
-			continue
-		}
-
-		productNames = append(productNames, productName)
-
-		// Group by order number
-		if order, exists := orderMap[orderNumber]; exists {
-			order.Products = append(order.Products, RowData{
-				RowIdx:           rowIdx + 2,
-				OrderNumber:      orderNumber,
-				CreatedDate:      createdDate,
-				ProductName:      productName,
-				ShopeeVarianName: shopeeVarianName,
-				Quantity:         quantity,
-			})
+	for _, row := range rows {
+		if order, exists := orderMap[row.OrderNumber]; exists {
+			order.Products = append(order.Products, row)
 		} else {
-			orderMap[orderNumber] = &OrderData{
-				OrderNumber: orderNumber,
-				CreatedDate: createdDate,
-				Products: []RowData{{
-					RowIdx:           rowIdx + 2,
-					OrderNumber:      orderNumber,
-					CreatedDate:      createdDate,
-					ProductName:      productName,
-					ShopeeVarianName: shopeeVarianName,
-					Quantity:         quantity,
-				}},
+			orderMap[row.OrderNumber] = &OrderData{
+				OrderNumber: row.OrderNumber,
+				CreatedDate: row.CreatedDate,
+				Products:    []RowData{row},
 			}
 		}
 	}
+	return orderMap
+}
 
-	// Get the first order's created date (all orders should have the same date)
-	if len(orderMap) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid orders found in Excel"})
-		return
-	}
-
-	// Get the first order to get the created date
-	var firstOrder *OrderData
-	for _, order := range orderMap {
-		firstOrder = order
-		break
-	}
-
-	// Start a single transaction for all orders
-	username, _ := util.GetUsernameFromContext(c)
-	now := time.Now().UTC()
-	tx, err := h.db.Begin(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to begin transaction"})
-		return
-	}
-	defer tx.Rollback(c)
-
-	// Soft delete existing transactions for this date before processing any orders (inside transaction, before the loop)
-	_, err = tx.Exec(c, `
-		UPDATE online_transactions 
-		SET deleted_at = $1, deleted_by = $2
-		WHERE DATE(created_date) = DATE($3)
-		AND deleted_at IS NULL
-	`, now, username, firstOrder.CreatedDate)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to soft delete existing transactions: " + err.Error()})
-		return
-	}
-	// Soft delete existing product error logs for this date before processing any orders (inside transaction, before the loop)
-	_, err = tx.Exec(c, `
-		UPDATE product_error_logs 
-		SET deleted_at = $1
-		WHERE DATE(created_date) = DATE($2)
-		AND deleted_at IS NULL
-	`, now, firstOrder.CreatedDate)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to soft delete existing product error logs: " + err.Error()})
-		return
-	}
-
-	// Query all products at once
+// queryProducts retrieves all products from the database based on product names
+func (h *Handler) queryProducts(c *gin.Context, productNames []string) (map[string]products.Product, error) {
 	productMap := make(map[string]products.Product)
-	if orderMap["250501NXQHV5DQ"] != nil {
-		log.Println(orderMap["250501NXQHV5DQ"])
-	}
 	productRows, err := h.db.Query(c, `
 		SELECT id, name, cost_price, gross_profit_percentage, varian_gross_profit_percentage, shopee_category, COALESCE(shopee_varian_name, ''), shopee_name 
 		FROM products 
@@ -636,8 +593,7 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 		AND deleted_at IS NULL
 	`, productNames)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query products"})
-		return
+		return nil, fmt.Errorf("failed to query products: %w", err)
 	}
 	defer productRows.Close()
 
@@ -655,13 +611,10 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 			&product.ShopeeName,
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan product data"})
-			return
+			return nil, fmt.Errorf("failed to scan product data: %w", err)
 		}
 		if varianGPP.Valid {
 			product.VarianGrossProfitPercentage = float32(varianGPP.Float64)
-		} else {
-			product.VarianGrossProfitPercentage = 0
 		}
 		lookupKey := product.ShopeeName
 		if product.ShopeeVarianName != "" {
@@ -670,132 +623,267 @@ func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
 		productMap[lookupKey] = product
 	}
 
-	// Process each order
-	for _, order := range orderMap {
-		// Calculate totals for all products in the order
-		var transactionProducts []TransactionProduct
-		var hasError bool
-		var errorRow int
-		var errorMsg string
+	return productMap, nil
+}
 
-		for _, rowData := range order.Products {
-			lookupKey := rowData.ProductName
-			if rowData.ShopeeVarianName != "" {
-				lookupKey = rowData.ProductName + " " + rowData.ShopeeVarianName
-			}
-			product, exists := productMap[lookupKey]
-			if !exists {
-				hasError = true
-				errorRow = rowData.RowIdx
-				errorMsg = "Product not found: " + lookupKey
+// processOrder processes a single order and returns transaction products and error status
+func (h *Handler) processOrder(
+	order *OrderData,
+	productMap map[string]products.Product,
+	tx pgx.Tx,
+	c *gin.Context,
+) ([]TransactionProduct, bool, error, []map[string]interface{}) {
+	var transactionProducts []TransactionProduct
+	username, _ := util.GetUsernameFromContext(c)
+	hasError := false
+	errorProductNotFound := []map[string]interface{}{}
+	for _, rowData := range order.Products {
+		lookupKey := rowData.ProductName
+		if rowData.ShopeeVarianName != "" {
+			lookupKey = rowData.ProductName + " " + rowData.ShopeeVarianName
+		}
 
-				// Log the error to database using tx
-				_, err = tx.Exec(c, `
-					INSERT INTO product_error_logs (
-						order_number, created_date, product_name, error_message, created_by
-					) VALUES ($1, $2, $3, $4, $5)
-				`, order.OrderNumber, order.CreatedDate, lookupKey, errorMsg, username)
-				if err != nil {
-					results = append(results, map[string]interface{}{"row": rowData.RowIdx, "error": "Failed to log product error: " + err.Error()})
-					return
-				}
-				continue
-			}
-
-			var grossProfitPercentage float32
-			if product.ShopeeVarianName != "" && product.VarianGrossProfitPercentage != 0 {
-				grossProfitPercentage = product.VarianGrossProfitPercentage
-			} else {
-				grossProfitPercentage = product.GrossProfitPercentage
-			}
-			productSalePrice, productFee := products.CalculateShopeePricing(product.CostPrice, grossProfitPercentage, product.ShopeeCategory)
-			transactionProducts = append(transactionProducts, TransactionProduct{
-				ProductName: product.Name,
-				CostPrice:   product.CostPrice,
-				SalePrice:   productSalePrice,
-				Quantity:    rowData.Quantity,
-				FeeAmount:   productFee,
+		product, exists := productMap[lookupKey]
+		if !exists {
+			errorProductNotFound = append(errorProductNotFound, map[string]interface{}{
+				"row":          rowData.RowIdx,
+				"error":        "Product not found: " + lookupKey,
+				"order_number": order.OrderNumber,
 			})
+			hasError = true
+			// Log the error to database
+			_, err := tx.Exec(c, `
+				INSERT INTO product_error_logs (
+					order_number, created_date, product_name, error_message, created_by
+				) VALUES ($1, $2, $3, $4, $5)
+			`, order.OrderNumber, order.CreatedDate, lookupKey, "Product not found: "+lookupKey, username)
+			if err != nil {
+				return nil, true, fmt.Errorf("failed to log product error: %w", err), errorProductNotFound
+			}
+			continue
+		}
+
+		var grossProfitPercentage float32
+		if product.ShopeeVarianName != "" && product.VarianGrossProfitPercentage != 0 {
+			grossProfitPercentage = product.VarianGrossProfitPercentage
+		} else {
+			grossProfitPercentage = product.GrossProfitPercentage
+		}
+
+		productSalePrice, productFee := products.CalculateShopeePricing(product.CostPrice, grossProfitPercentage, product.ShopeeCategory)
+		transactionProducts = append(transactionProducts, TransactionProduct{
+			ProductName: product.Name,
+			CostPrice:   product.CostPrice,
+			SalePrice:   productSalePrice,
+			Quantity:    rowData.Quantity,
+			FeeAmount:   productFee,
+		})
+	}
+
+	return transactionProducts, hasError, nil, errorProductNotFound
+}
+
+// insertTransaction inserts a transaction and its products into the database
+func insertTransaction(order *OrderData, totals TransactionTotals, tx pgx.Tx, c *gin.Context) error {
+	username, _ := util.GetUsernameFromContext(c)
+	now := time.Now().UTC()
+	uuidOnlineTransaction := uuid.New()
+
+	// Insert transaction
+	transactionQuery := `
+		INSERT INTO online_transactions (
+			id, type, order_number, created_date, period_month, period_year,
+			total_base_amount, total_sale_amount, total_net_profit, created_by,
+			created_at, total_fee_amount
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	`
+	_, err := tx.Exec(c, transactionQuery,
+		uuidOnlineTransaction,
+		"SHOPEE",
+		order.OrderNumber,
+		order.CreatedDate,
+		int(order.CreatedDate.Month()),
+		order.CreatedDate.Year(),
+		totals.TotalBaseAmount,
+		totals.TotalSaleAmount,
+		totals.TotalNetProfit,
+		username,
+		now,
+		totals.TotalFeeAmount,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to insert transaction: %w", err)
+	}
+
+	// Insert products using bulk insert
+	if len(totals.Products) > 0 {
+		productQuery := `
+			INSERT INTO online_transaction_products (
+				id, online_transaction_id, product_name, cost_price, sale_price, quantity, fee_amount
+			)
+			VALUES 
+		`
+		values := []interface{}{}
+		valueStrings := []string{}
+		paramCount := 1
+
+		for _, product := range totals.Products {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+				paramCount, paramCount+1, paramCount+2, paramCount+3, paramCount+4, paramCount+5, paramCount+6))
+			values = append(values,
+				uuid.New(),
+				uuidOnlineTransaction,
+				product.ProductName,
+				product.CostPrice,
+				product.SalePrice,
+				product.Quantity,
+				product.FeeAmount,
+			)
+			paramCount += 7
+		}
+
+		productQuery += strings.Join(valueStrings, ",")
+		_, err = tx.Exec(c, productQuery, values...)
+		if err != nil {
+			return fmt.Errorf("failed to insert products: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// processTransaction handles the entire transaction process including soft deletes and product processing
+func (h *Handler) processTransaction(orderMap map[string]*OrderData, productMap map[string]products.Product, c *gin.Context) {
+	username, _ := util.GetUsernameFromContext(c)
+	now := time.Now().UTC()
+
+	// Start transaction
+	tx, err := h.db.Begin(c)
+	if err != nil {
+		errMessage := fmt.Sprintf("failed to begin transaction: %s", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errMessage})
+		return
+	}
+	defer tx.Rollback(c)
+
+	// Get the first order to get the created date
+	var firstOrder *OrderData
+	for _, order := range orderMap {
+		firstOrder = order
+		break
+	}
+
+	// Soft delete existing transactions and error logs
+	_, err = tx.Exec(c, `
+		UPDATE online_transactions 
+		SET deleted_at = $1, deleted_by = $2
+		WHERE DATE(created_date) = DATE($3)
+		AND deleted_at IS NULL
+	`, now, username, firstOrder.CreatedDate)
+	if err != nil {
+		errMessage := fmt.Sprintf("failed to soft delete existing transactions: %s", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errMessage})
+		return
+	}
+
+	_, err = tx.Exec(c, `
+		UPDATE product_error_logs 
+		SET deleted_at = $1
+		WHERE DATE(created_date) = DATE($2)
+		AND deleted_at IS NULL
+	`, now, firstOrder.CreatedDate)
+	if err != nil {
+		errMessage := fmt.Sprintf("failed to soft delete existing product error logs: %s", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errMessage})
+		return
+	}
+
+	// Process each order
+	errorResultsProductNotFound := []map[string]interface{}{}
+	for _, order := range orderMap {
+		transactionProducts, hasError, err, errorProductNotFound := h.processOrder(order, productMap, tx, c)
+		if err != nil {
+			errMessage := fmt.Sprintf("failed to process order: %s", err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{"error": errMessage})
+			return
 		}
 
 		if hasError {
-			results = append(results, map[string]interface{}{"row": errorRow, "error": errorMsg})
+			errorResultsProductNotFound = append(errorResultsProductNotFound, errorProductNotFound...)
 			continue
 		}
 
 		totals := calculateTransactionTotals(transactionProducts)
-
-		// Insert transaction
-		uuidOnlineTransaction := uuid.New()
-		transactionQuery := `
-			INSERT INTO online_transactions (
-				id, type, order_number, created_date, period_month, period_year,
-				total_base_amount, total_sale_amount, total_net_profit, created_by,
-				created_at, total_fee_amount
-			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-		`
-		_, err = tx.Exec(c, transactionQuery,
-			uuidOnlineTransaction,
-			"SHOPEE",
-			order.OrderNumber,
-			order.CreatedDate,
-			int(order.CreatedDate.Month()),
-			order.CreatedDate.Year(),
-			totals.TotalBaseAmount,
-			totals.TotalSaleAmount,
-			totals.TotalNetProfit,
-			username,
-			now,
-			totals.TotalFeeAmount,
-		)
+		err = insertTransaction(order, totals, tx, c)
 		if err != nil {
-			results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "error": "Failed to insert transaction: " + err.Error()})
+			errMessage := fmt.Sprintf("failed to insert transaction: %s", err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{"error": errMessage})
 			return
 		}
-
-		// Insert products using bulk insert
-		if len(totals.Products) > 0 {
-			productQuery := `
-				INSERT INTO online_transaction_products (
-					id, online_transaction_id, product_name, cost_price, sale_price, quantity, fee_amount
-				)
-				VALUES 
-			`
-			values := []interface{}{}
-			valueStrings := []string{}
-			paramCount := 1
-
-			for _, product := range totals.Products {
-				valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)",
-					paramCount, paramCount+1, paramCount+2, paramCount+3, paramCount+4, paramCount+5, paramCount+6))
-				values = append(values,
-					uuid.New(),
-					uuidOnlineTransaction,
-					product.ProductName,
-					product.CostPrice,
-					product.SalePrice,
-					product.Quantity,
-					product.FeeAmount,
-				)
-				paramCount += 7
-			}
-
-			productQuery += strings.Join(valueStrings, ",")
-			_, err = tx.Exec(c, productQuery, values...)
-			if err != nil {
-				results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "error": "Failed to insert products: " + err.Error()})
-				return
-			}
-		}
-
-		results = append(results, map[string]interface{}{"row": order.Products[0].RowIdx, "status": "success", "order_number": order.OrderNumber})
 	}
-
+	if len(errorResultsProductNotFound) > 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found", "results": errorResultsProductNotFound})
+		return
+	}
+	// Commit transaction
 	if err := tx.Commit(c); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		errMessage := fmt.Sprintf("failed to commit transaction: %s", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errMessage})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+// AutoInputOnlineTransactions handles Excel upload and auto input
+func (h *Handler) AutoInputOnlineTransactions(c *gin.Context) {
+	xl, err := handleExcelFileUpload(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"results": results})
+	sheetName := xl.GetSheetName(0)
+	rows, err := xl.GetRows(sheetName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read rows from Excel"})
+		return
+	}
+
+	// Find column indexes
+	colIdx, err := findColumnIndexes(rows[0])
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Parse all rows
+	var allRows []RowData
+	productNames := []string{}
+	for rowIdx, row := range rows[1:] {
+		rowData, err := parseExcelRow(row, colIdx, rowIdx)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		allRows = append(allRows, rowData)
+		productNames = append(productNames, rowData.ProductName)
+	}
+
+	// Group orders
+	orderMap := groupOrdersByOrderNumber(allRows)
+	if len(orderMap) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid orders found in Excel"})
+		return
+	}
+
+	// Query all products
+	productMap, err := h.queryProducts(c, productNames)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Process all transactions
+	h.processTransaction(orderMap, productMap, c)
 }
