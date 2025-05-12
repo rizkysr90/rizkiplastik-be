@@ -2,7 +2,7 @@ package products
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,19 +52,35 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		return
 	}
 
+	var varianGPP interface{}
+	if req.VarianGrossProfitPercentage != nil && *req.VarianGrossProfitPercentage != 0 {
+		varianGPP = *req.VarianGrossProfitPercentage
+	} else {
+		varianGPP = nil
+	}
+
+	// Handle empty variant name
+	var shopeeVarianName interface{}
+	if req.ShopeeVarianName == "" {
+		shopeeVarianName = nil
+	} else {
+		shopeeVarianName = strings.ToUpper(req.ShopeeVarianName)
+	}
+
 	product := Product{
 		ID:                    uuid.New(),
 		Name:                  req.Name,
 		CostPrice:             req.CostPrice,
 		GrossProfitPercentage: req.GrossProfitPercentage,
 		ShopeeCategory:        req.ShopeeCategory,
+		ShopeeName:            req.ShopeeName,
 		CreatedAt:             time.Now().UTC(),
 	}
 
 	query := `
 		INSERT INTO products (
-		id, name, cost_price, gross_profit_percentage, shopee_category, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		id, name, cost_price, gross_profit_percentage, varian_gross_profit_percentage, shopee_category, shopee_varian_name, shopee_name, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	_, err := h.db.Exec(c, query,
@@ -72,7 +88,10 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 		strings.ToUpper(product.Name),
 		product.CostPrice,
 		product.GrossProfitPercentage,
+		varianGPP,
 		strings.ToUpper(product.ShopeeCategory),
+		shopeeVarianName,
+		strings.ToUpper(product.ShopeeName),
 		product.CreatedAt,
 	)
 
@@ -100,17 +119,35 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	}
 
 	now := time.Now().UTC()
+	var varianGPP interface{}
+	if req.VarianGrossProfitPercentage != nil && *req.VarianGrossProfitPercentage != 0 {
+		varianGPP = *req.VarianGrossProfitPercentage
+	} else {
+		varianGPP = nil
+	}
+
+	// Handle empty variant name
+	var shopeeVarianName interface{}
+	if req.ShopeeVarianName == "" {
+		shopeeVarianName = nil
+	} else {
+		shopeeVarianName = strings.ToUpper(req.ShopeeVarianName)
+	}
+
 	query := `
 		UPDATE products
-		SET name = $1, gross_profit_percentage = $2, shopee_category = $3, updated_at = $4,
-		cost_price = $5
-		WHERE id = $6 AND deleted_at IS NULL
+		SET name = $1, gross_profit_percentage = $2, varian_gross_profit_percentage = $3, shopee_category = $4, shopee_varian_name = $5, shopee_name = $6, updated_at = $7,
+		cost_price = $8
+		WHERE id = $9 AND deleted_at IS NULL
 	`
 
 	result, err := h.db.Exec(c, query,
 		strings.ToUpper(req.Name),
 		req.GrossProfitPercentage,
+		varianGPP,
 		strings.ToUpper(req.ShopeeCategory),
+		shopeeVarianName,
+		strings.ToUpper(req.ShopeeName),
 		now,
 		req.CostPrice,
 		productID,
@@ -169,26 +206,37 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 
 	var product Product
 	query := `
-		SELECT id, name, cost_price, gross_profit_percentage, shopee_category
+		SELECT id,
+		name, 
+		cost_price, 
+		gross_profit_percentage, 
+		COALESCE(varian_gross_profit_percentage, 0), 
+		shopee_category, 
+		COALESCE(shopee_varian_name, ''), 
+		COALESCE(shopee_name, '')
 		FROM products
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
+	var varianGPP sql.NullFloat64
 	err = h.db.QueryRow(c, query, productID).Scan(
 		&product.ID,
 		&product.Name,
 		&product.CostPrice,
 		&product.GrossProfitPercentage,
+		&varianGPP,
 		&product.ShopeeCategory,
+		&product.ShopeeVarianName,
+		&product.ShopeeName,
 	)
-
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve product"})
 		return
+	}
+	if varianGPP.Valid {
+		product.VarianGrossProfitPercentage = float32(varianGPP.Float64)
+	} else {
+		product.VarianGrossProfitPercentage = 0
 	}
 
 	// Calculate shopee sale price and fee
@@ -235,8 +283,16 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 
 	// Use a single query with window function for count and data
 	query := `
-		SELECT id, name, cost_price, gross_profit_percentage, shopee_category, 
-		       COUNT(*) OVER() AS total_count
+		SELECT 
+			id, 
+			name, 
+			cost_price, 
+			gross_profit_percentage, 
+			varian_gross_profit_percentage, 
+			shopee_category, 
+			COALESCE(shopee_varian_name, ''), 
+			COALESCE(shopee_name, ''), 
+		     COUNT(*) OVER() AS total_count
 		FROM products
 		WHERE deleted_at IS NULL AND
 		($1 = '' OR name ILIKE '%' || $1 || '%')
@@ -256,18 +312,28 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 
 	for rows.Next() {
 		var product Product
-		// Add total_count to scan
+		var varianGPP sql.NullFloat64
 		err := rows.Scan(
 			&product.ID,
 			&product.Name,
 			&product.CostPrice,
 			&product.GrossProfitPercentage,
+			&varianGPP,
 			&product.ShopeeCategory,
+			&product.ShopeeVarianName,
+			&product.ShopeeName,
 			&totalCount,
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan product data"})
+			errMessage := fmt.Sprintf("Failed to scan product data: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": errMessage})
 			return
+		}
+
+		if varianGPP.Valid {
+			product.VarianGrossProfitPercentage = float32(varianGPP.Float64)
+		} else {
+			product.VarianGrossProfitPercentage = 0
 		}
 
 		// Calculate shopee sale price and fee

@@ -19,7 +19,8 @@ CREATE_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/products" \
     "name": "Test Product A",
     "cost_price": 100.50,
     "gross_profit_percentage": 25.50,
-    "shopee_category": "A"
+    "shopee_category": "A",
+    "shopee_name": "Test Shopee Name A"
   }')
 
 if [ -z "$CREATE_RESPONSE" ]; then
@@ -37,7 +38,8 @@ PRODUCT_B_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/products" \
     "name": "Test Product B",
     "cost_price": 200.75,
     "gross_profit_percentage": 30.00,
-    "shopee_category": "B"
+    "shopee_category": "B",
+    "shopee_name": "Test Shopee Name B"
   }')
 
 # 3. Get all products
@@ -66,7 +68,8 @@ UPDATE_RESPONSE=$(curl -s -X PUT "${BASE_URL}/api/v1/products/$PRODUCT_ID" \
   -d '{
     "name": "Updated Product Name",
     "gross_profit_percentage": 35.75,
-    "shopee_category": "C"
+    "shopee_category": "C",
+    "shopee_name": "Updated Shopee Name"
   }')
 
 if [ -z "$UPDATE_RESPONSE" ]; then
@@ -110,7 +113,8 @@ INVALID_CREATE=$(curl -s -X POST "${BASE_URL}/api/v1/products" \
     "name": "A very long product name that exceeds the maximum allowed length of fifty characters",
     "cost_price": -100,
     "gross_profit_percentage": "invalid",
-    "shopee_category": "Z"
+    "shopee_category": "Z",
+    "shopee_name": ""
   }')
 echo $INVALID_CREATE | jq '.'
 

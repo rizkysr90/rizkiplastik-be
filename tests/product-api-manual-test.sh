@@ -33,7 +33,8 @@ API_URL="http://localhost:8080"
 #     "name": "Biggy CT-250 1 DUS",
 #     "cost_price": 31500,
 #     "gross_profit_percentage": 10,
-#     "shopee_category": "A"
+#     "shopee_category": "A",
+#     "shopee_name": "Manual Shopee Name"
 #   }'
 
 # ============================================================================
@@ -66,7 +67,8 @@ API_URL="http://localhost:8080"
 #   -d '{
 #     "name": "Updated Product Name",
 #     "gross_profit_percentage": 30.75,
-#     "shopee_category": "B"
+#     "shopee_category": "B",
+#     "shopee_name": "Manual Shopee Name Updated"
 #   }'
 
 # ============================================================================
@@ -84,7 +86,8 @@ API_URL="http://localhost:8080"
 #     "name": "Invalid Product",
 #     "cost_price": 100,
 #     "gross_profit_percentage": 200,
-#     "shopee_category": "Z"
+#     "shopee_category": "Z",
+#     "shopee_name": ""
 #   }'
 
 # ============================================================================
@@ -116,7 +119,8 @@ create_and_get_id() {
       "name": "Test Product For ID",
       "cost_price": 100.50,
       "gross_profit_percentage": 25.50,
-      "shopee_category": "A"
+      "shopee_category": "A",
+      "shopee_name": "Test Shopee Name For ID"
     }')
   
   # Get all products and extract the first ID
