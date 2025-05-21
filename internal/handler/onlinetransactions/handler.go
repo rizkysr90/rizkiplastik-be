@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -618,6 +619,10 @@ func (h *Handler) queryProducts(c *gin.Context, productNames []string) (map[stri
 		if product.ShopeeVarianName != "" {
 			lookupKey = product.ShopeeName + " " + product.ShopeeVarianName
 		}
+		if product.ShopeeName == "COLATTA DARK CHOCOLATE STICK BAKE STABLE REPACK 100GR 250GR | BEKASI" {
+			log.Println("HEREEE : ", product.ShopeeVarianName)
+			log.Println("LOOKEY HANDLER : ", lookupKey)
+		}
 		productMap[lookupKey] = product
 	}
 
@@ -637,11 +642,17 @@ func (h *Handler) processOrder(
 	errorProductNotFound := []map[string]interface{}{}
 	for _, rowData := range order.Products {
 		lookupKey := rowData.ProductName
+
 		if rowData.ShopeeVarianName != "" {
 			lookupKey = rowData.ProductName + " " + rowData.ShopeeVarianName
 		}
 
 		product, exists := productMap[lookupKey]
+		if rowData.ProductName == strings.ToUpper("Colatta Dark Chocolate Stick Bake Stable Repack 100gr 250gr | Bekasi") {
+			log.Println("HEREEE raww: ", rowData.ProductName, rowData.ShopeeVarianName)
+			log.Println("RESULT :", product.ShopeeName, product.ShopeeVarianName)
+			log.Println("LOOK UP KEY :", lookupKey)
+		}
 		if !exists {
 			errorProductNotFound = append(errorProductNotFound, map[string]interface{}{
 				"row":          rowData.RowIdx,

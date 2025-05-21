@@ -131,7 +131,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	if req.ShopeeVarianName == "" {
 		shopeeVarianName = nil
 	} else {
-		shopeeVarianName = strings.ToUpper(req.ShopeeVarianName)
+		shopeeVarianName = strings.TrimSpace(strings.ToUpper(req.ShopeeVarianName))
 	}
 
 	query := `
@@ -142,12 +142,12 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	`
 
 	result, err := h.db.Exec(c, query,
-		strings.ToUpper(req.Name),
+		strings.TrimSpace(strings.ToUpper(req.Name)),
 		req.GrossProfitPercentage,
 		varianGPP,
 		strings.ToUpper(req.ShopeeCategory),
 		shopeeVarianName,
-		strings.ToUpper(req.ShopeeName),
+		strings.TrimSpace(strings.ToUpper(req.ShopeeName)),
 		now,
 		req.CostPrice,
 		productID,
