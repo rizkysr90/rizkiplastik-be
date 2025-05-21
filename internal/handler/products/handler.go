@@ -3,6 +3,7 @@ package products
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -213,7 +214,8 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 		COALESCE(varian_gross_profit_percentage, 0), 
 		shopee_category, 
 		COALESCE(shopee_varian_name, ''), 
-		COALESCE(shopee_name, '')
+		COALESCE(shopee_name, ''),
+		shopee_fee_free_delivery_fee
 		FROM products
 		WHERE id = $1 AND deleted_at IS NULL
 	`
@@ -228,6 +230,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 		&product.ShopeeCategory,
 		&product.ShopeeVarianName,
 		&product.ShopeeName,
+		&product.ShopeeFreeDeliveryFee,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve product"})
@@ -243,6 +246,7 @@ func (h *ProductHandler) GetProduct(c *gin.Context) {
 	product.ShopeeSalePrice, product.ShopeeFee = CalculateShopeePricing(
 		product.CostPrice,
 		product.GrossProfitPercentage,
+		product.ShopeeFreeDeliveryFee,
 		product.ShopeeCategory,
 	)
 
@@ -292,7 +296,8 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 			shopee_category, 
 			COALESCE(shopee_varian_name, ''), 
 			COALESCE(shopee_name, ''), 
-		     COUNT(*) OVER() AS total_count
+			shopee_fee_free_delivery_fee,
+			COUNT(*) OVER() AS total_count
 		FROM products
 		WHERE deleted_at IS NULL AND
 		($1 = '' OR name ILIKE '%' || $1 || '%')
@@ -302,6 +307,7 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 
 	rows, err := h.db.Query(c, query, nameFilter, pageSize, offset)
 	if err != nil {
+		log.Println(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve products"})
 		return
 	}
@@ -322,6 +328,7 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 			&product.ShopeeCategory,
 			&product.ShopeeVarianName,
 			&product.ShopeeName,
+			&product.ShopeeFreeDeliveryFee,
 			&totalCount,
 		)
 		if err != nil {
@@ -340,6 +347,7 @@ func (h *ProductHandler) GetProducts(c *gin.Context) {
 		product.ShopeeSalePrice, product.ShopeeFee = CalculateShopeePricing(
 			product.CostPrice,
 			product.GrossProfitPercentage,
+			product.ShopeeFreeDeliveryFee,
 			product.ShopeeCategory,
 		)
 
