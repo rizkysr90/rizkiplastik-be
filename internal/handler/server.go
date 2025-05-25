@@ -10,6 +10,7 @@ import (
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/authentication"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/onlinetransactions"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/products"
+	"github.com/rizkysr90/rizkiplastik-be/internal/handler/summary"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
 )
 
@@ -82,5 +83,9 @@ func (s *Server) registerRoutes() {
 
 	onlineTransactionHandler := onlinetransactions.NewOnlineTransactions(s.db)
 	onlineTransactionHandler.RegisterRoutes(s.router, authMiddleware)
+
+	// Summary routes
+	summaryHandler := summary.NewSummaryHandler(s.db)
+	summaryHandler.RegisterRoutes(s.router, authMiddleware)
 
 }
