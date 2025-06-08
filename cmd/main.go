@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rizkysr90/rizkiplastik-be/internal/config"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler"
 )
@@ -62,7 +62,7 @@ func setupDatabase(ctx context.Context, pgConfig config.PostgreSQLConfig) (*pgxp
 	config.MaxConnIdleTime = pgConfig.MaxConnIdleTime
 
 	// Create the connection pool
-	pool, err := pgxpool.ConnectConfig(ctx, config)
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}
