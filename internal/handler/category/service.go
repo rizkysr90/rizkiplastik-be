@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rizkysr90/rizkiplastik-be/internal/common"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
+	"github.com/rizkysr90/rizkiplastik-be/internal/util"
 )
 
 const (
@@ -17,13 +18,11 @@ const (
 type Service struct {
 	categoryRepo repository.Category
 }
-type ServiceError struct {
-	HTTPCode int
-	Message  string
-}
 
-func (e *ServiceError) Error() string {
-	return e.Message
+func NewService(categoryRepo repository.Category) Service {
+	return Service{
+		categoryRepo: categoryRepo,
+	}
 }
 
 type reqCreateCategory struct {
@@ -39,32 +38,32 @@ func (req *reqCreateCategory) sanitize() {
 }
 func (req *reqCreateCategory) validate() error {
 	if err := common.ValidateMaxLengthStr(req.Name, 50); err != nil {
-		return &ServiceError{
+		return &util.ServiceError{
 			HTTPCode: 400,
 			Message:  err.Error(),
 		}
 	}
 	if err := common.ValidateMinLengthStr(req.Name, 4); err != nil {
-		return &ServiceError{
+		return &util.ServiceError{
 			HTTPCode: 400,
 			Message:  err.Error(),
 		}
 	}
 	if err := common.ValidateMaxLengthStr(req.Code, 3); err != nil {
-		return &ServiceError{
+		return &util.ServiceError{
 			HTTPCode: 400,
 			Message:  err.Error(),
 		}
 	}
 	if req.Description != nil {
 		if err := common.ValidateMaxLengthStr(*req.Description, 100); err != nil {
-			return &ServiceError{
+			return &util.ServiceError{
 				HTTPCode: 400,
 				Message:  err.Error(),
 			}
 		}
 		if err := common.ValidateMinLengthStr(*req.Description, 10); err != nil {
-			return &ServiceError{
+			return &util.ServiceError{
 				HTTPCode: 400,
 				Message:  err.Error(),
 			}
@@ -97,16 +96,7 @@ func (s *Service) CreateCategory(ctx context.Context,
 		insertedData.Description = *data.Description
 	}
 	if err := s.categoryRepo.InsertTransaction(ctx, insertedData); err != nil {
-		if err.Error() == duplicateCategoryError {
-			return &ServiceError{
-				HTTPCode: 400,
-				Message:  "category already exists",
-			}
-		}
-		return &ServiceError{
-			HTTPCode: 500,
-			Message:  err.Error(),
-		}
+		return util.ConvertRepositoryError(err)
 	}
 	return nil
 }

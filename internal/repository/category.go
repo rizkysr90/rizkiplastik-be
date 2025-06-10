@@ -20,5 +20,4 @@ type CategoryData struct {
 
 type Category interface {
 	InsertTransaction(ctx context.Context, data *CategoryData) error
-	FindByCode(ctx context.Context, code string) (*CategoryData, error)
 }

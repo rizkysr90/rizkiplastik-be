@@ -6,18 +6,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
-	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
+	"github.com/rizkysr90/rizkiplastik-be/internal/util"
 )
 
 // CategoryHandler handles HTTP requests for products
 type Handler struct {
-	db           *pgxpool.Pool
-	categoryRepo repository.Category
+	db              *pgxpool.Pool
+	categoryService Service
 }
 
 // CategoryHandler creates a new product handler
-func NewCategoryHandler(db *pgxpool.Pool) *Handler {
-	return &Handler{db: db}
+func NewCategoryHandler(db *pgxpool.Pool, categoryService Service) *Handler {
+	return &Handler{db: db, categoryService: categoryService}
 }
 
 // RegisterRoutes registers all category related routes
@@ -39,17 +39,9 @@ func (h *Handler) CreateCategory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	categoryService := Service{
-		categoryRepo: h.categoryRepo,
-	}
-	err := categoryService.CreateCategory(c.Request.Context(), &requestBody)
+	err := h.categoryService.CreateCategory(c.Request.Context(), &requestBody)
 	if err != nil {
-		serviceErr := err.(*ServiceError)
-		if serviceErr.HTTPCode == 400 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": serviceErr.Message})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": serviceErr.Message})
-		}
+		util.HandleServiceError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{})

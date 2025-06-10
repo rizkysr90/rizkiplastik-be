@@ -3,10 +3,19 @@ package pg
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
+)
+
+// Sentinel errors - define once, use everywhere
+var (
+	ErrCategoryAlreadyExists = errors.New("category already exists")
+	ErrCategoryNotFound      = errors.New("category not found")
+	ErrDatabaseOperation     = errors.New("database operation failed")
+	ErrTransactionFailed     = errors.New("transaction failed")
 )
 
 type Category struct {
@@ -40,6 +49,11 @@ const (
 
 func (c *Category) InsertTransaction(
 	ctx context.Context, data *repository.CategoryData) error {
+	var description interface{}
+	description = nil
+	if data.Description != "" {
+		description = data.Description
+	}
 	tx, err := c.db.BeginTx(ctx, pgx.TxOptions{
 		IsoLevel: pgx.ReadCommitted,
 	})
@@ -52,13 +66,11 @@ func (c *Category) InsertTransaction(
 	if err := row.Scan(
 		&categoryByCode.ID,
 		&categoryByCode.Name,
-		&categoryByCode.Code); err != nil {
+		&categoryByCode.Code); err != nil && err != pgx.ErrNoRows {
 		return err
 	}
-
-	if data.ID != "" {
-		errMsg := "transaction failed : category already exists"
-		return errors.New(errMsg)
+	if categoryByCode.ID != "" {
+		return ErrCategoryAlreadyExists
 	}
 
 	_, err = tx.Exec(ctx,
@@ -66,18 +78,17 @@ func (c *Category) InsertTransaction(
 		data.ID,
 		data.Name,
 		data.Code,
-		data.Description,
+		description,
 		data.IsActive,
 		data.CreatedBy,
+		data.UpdatedBy,
 	)
 	if err != nil {
-		errMsg := "transaction failed : failed to insert category : " + err.Error()
-		return errors.New(errMsg)
+		return fmt.Errorf("%w: %v", ErrDatabaseOperation, err)
 	}
-	err = tx.Commit(ctx)
-	if err != nil {
-		errMsg := "transaction failed : failed to commit : " + err.Error()
-		return errors.New(errMsg)
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("%w: %v", ErrTransactionFailed, err)
 	}
 	return nil
 }
