@@ -5,13 +5,15 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rizkysr90/rizkiplastik-be/internal/config"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/authentication"
+	"github.com/rizkysr90/rizkiplastik-be/internal/handler/category"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/onlinetransactions"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/products"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/summary"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
+	"github.com/rizkysr90/rizkiplastik-be/internal/repository/pg"
 )
 
 // Server wraps gin.Engine
@@ -88,4 +90,9 @@ func (s *Server) registerRoutes() {
 	summaryHandler := summary.NewSummaryHandler(s.db)
 	summaryHandler.RegisterRoutes(s.router, authMiddleware)
 
+	// Category routes
+	categoryRepo := pg.NewCategory(s.db)
+	categoryService := category.NewService(categoryRepo)
+	categoryHandler := category.NewCategoryHandler(s.db, categoryService)
+	categoryHandler.RegisterRoutes(s.router, authMiddleware)
 }
