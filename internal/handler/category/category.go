@@ -30,6 +30,7 @@ func (h *Handler) RegisterRoutes(
 	admin.Use(authMiddleware.RequireAuth(), authMiddleware.RequireRole("ADMIN"))
 	{
 		admin.POST("", h.CreateCategory)
+		admin.PUT("/:category_id", h.UpdateCategory)
 	}
 }
 
@@ -39,10 +40,29 @@ func (h *Handler) CreateCategory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err := h.categoryService.CreateCategory(c.Request.Context(), &requestBody)
+	err := h.categoryService.CreateCategory(c, &requestBody)
 	if err != nil {
 		util.HandleServiceError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{})
+}
+func (h *Handler) UpdateCategory(c *gin.Context) {
+	categoryID := c.Param("category_id")
+	if categoryID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "category_id is required"})
+		return
+	}
+	var requestBody UpdateCategoryRequest
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	requestBody.CategoryID = categoryID
+	err := h.categoryService.UpdateCategory(c, &requestBody)
+	if err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
 }

@@ -11,10 +11,6 @@ import (
 	"github.com/rizkysr90/rizkiplastik-be/internal/util"
 )
 
-const (
-	duplicateCategoryError = "transaction failed : category already exists"
-)
-
 type Service struct {
 	categoryRepo repository.Category
 }
@@ -37,17 +33,8 @@ func (req *reqCreateCategory) sanitize() {
 	}
 }
 func (req *reqCreateCategory) validate() error {
-	if err := common.ValidateMaxLengthStr(req.Name, 50); err != nil {
-		return &util.ServiceError{
-			HTTPCode: 400,
-			Message:  err.Error(),
-		}
-	}
-	if err := common.ValidateMinLengthStr(req.Name, 4); err != nil {
-		return &util.ServiceError{
-			HTTPCode: 400,
-			Message:  err.Error(),
-		}
+	if err := validateCategoryName(req.Name); err != nil {
+		return err
 	}
 	if err := common.ValidateMaxLengthStr(req.Code, 3); err != nil {
 		return &util.ServiceError{
@@ -56,17 +43,8 @@ func (req *reqCreateCategory) validate() error {
 		}
 	}
 	if req.Description != nil {
-		if err := common.ValidateMaxLengthStr(*req.Description, 100); err != nil {
-			return &util.ServiceError{
-				HTTPCode: 400,
-				Message:  err.Error(),
-			}
-		}
-		if err := common.ValidateMinLengthStr(*req.Description, 10); err != nil {
-			return &util.ServiceError{
-				HTTPCode: 400,
-				Message:  err.Error(),
-			}
+		if err := validateCategoryDescription(*req.Description); err != nil {
+			return err
 		}
 	}
 	return nil

@@ -20,4 +20,5 @@ type CategoryData struct {
 
 type Category interface {
 	InsertTransaction(ctx context.Context, data *CategoryData) error
+	Update(ctx context.Context, data *CategoryData) error
 }

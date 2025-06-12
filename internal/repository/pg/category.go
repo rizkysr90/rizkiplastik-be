@@ -45,6 +45,16 @@ const (
 		FROM product_categories
 		WHERE code = $1
 	`
+	updateCategoryQuery = `
+		UPDATE product_categories
+		SET 
+			name = $1, 
+			description = $2, 
+			is_active = $3, 
+			updated_by = $4, 
+			updated_at = NOW()
+		WHERE id = $5
+	`
 )
 
 func (c *Category) InsertTransaction(
@@ -89,6 +99,26 @@ func (c *Category) InsertTransaction(
 
 	if err = tx.Commit(ctx); err != nil {
 		return fmt.Errorf("%w: %v", ErrTransactionFailed, err)
+	}
+	return nil
+}
+
+func (c *Category) Update(ctx context.Context, data *repository.CategoryData) error {
+	var description interface{} = nil
+	if data.Description != "" {
+		description = data.Description
+	}
+	_, err := c.db.Exec(
+		ctx,
+		updateCategoryQuery,
+		data.Name,
+		description,
+		data.IsActive,
+		data.UpdatedBy,
+		data.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrDatabaseOperation, err)
 	}
 	return nil
 }
