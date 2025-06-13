@@ -61,7 +61,6 @@ const (
 		      id, 
 			  name, 
 			  code, 
-			  description, 
 			  is_active,
 			  created_at,
 			  updated_at,
@@ -76,6 +75,18 @@ const (
 		    END
 		ORDER BY created_at DESC
 		LIMIT $4 OFFSET $5
+	`
+	findByCategoryIDQuery = `
+		SELECT 
+			id, 
+			name, 
+			code, 
+			description, 
+			is_active, 
+			created_at, 
+			updated_at
+		FROM product_categories
+		WHERE id = $1
 	`
 )
 
@@ -162,12 +173,10 @@ func (c *Category) GetList(
 	var totalCount int
 	for rows.Next() {
 		var category repository.CategoryData
-		var nullDescription sql.NullString
 		if err := rows.Scan(
 			&category.ID,
 			&category.Name,
 			&category.Code,
-			&nullDescription,
 			&category.IsActive,
 			&category.CreatedAt,
 			&category.UpdatedAt,
@@ -176,13 +185,34 @@ func (c *Category) GetList(
 			return nil, 0, errors.New("failed to scan category data : " + err.Error())
 		}
 
-		if nullDescription.Valid {
-			category.Description = nullDescription.String
-		}
 		categories = append(categories, category)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, 0, errors.New("rows error : " + err.Error())
 	}
 	return categories, totalCount, nil
+}
+func (c *Category) GetByID(ctx context.Context, categoryID string) (
+	*repository.CategoryData, error) {
+	row := c.db.QueryRow(ctx, findByCategoryIDQuery, categoryID)
+	var category repository.CategoryData
+	var nullDescription sql.NullString
+	if err := row.Scan(
+		&category.ID,
+		&category.Name,
+		&category.Code,
+		&nullDescription,
+		&category.IsActive,
+		&category.CreatedAt,
+		&category.UpdatedAt,
+	); err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, ErrCategoryNotFound
+		}
+		return nil, errors.New("failed to get category by id : " + err.Error())
+	}
+	if nullDescription.Valid {
+		category.Description = nullDescription.String
+	}
+	return &category, nil
 }

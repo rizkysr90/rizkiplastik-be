@@ -30,4 +30,5 @@ type Category interface {
 	InsertTransaction(ctx context.Context, data *CategoryData) error
 	Update(ctx context.Context, data *CategoryData) error
 	GetList(ctx context.Context, filter *CategoryDataFilter) ([]CategoryData, int, error)
+	GetByID(ctx context.Context, categoryID string) (*CategoryData, error)
 }

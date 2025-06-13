@@ -62,18 +62,18 @@ func ConvertRepositoryError(err error) *ServiceError {
 	case errors.Is(err, pg.ErrDatabaseOperation):
 		return &ServiceError{
 			HTTPCode: 500,
-			Message:  "internal server error",
+			Message:  "internal server error" + err.Error(),
 		}
 	case errors.Is(err, pg.ErrTransactionFailed):
 		return &ServiceError{
 			HTTPCode: 500,
-			Message:  "internal server error",
+			Message:  "internal server error" + err.Error(),
 		}
 	default:
 		// For any unknown repository error, return 500
 		return &ServiceError{
 			HTTPCode: 500,
-			Message:  "internal server error",
+			Message:  "internal server error" + err.Error(),
 		}
 	}
 }

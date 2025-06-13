@@ -30,6 +30,7 @@ func (h *Handler) RegisterRoutes(
 		endpoint.POST("/", h.CreateCategory)
 		endpoint.PUT("/:category_id", h.UpdateCategory)
 		endpoint.GET("/", h.GetListCategory)
+		endpoint.GET("/:category_id", h.GetByCategoryID)
 	}
 }
 
@@ -87,4 +88,17 @@ func (h *Handler) GetListCategory(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, response)
 
+}
+func (h *Handler) GetByCategoryID(c *gin.Context) {
+	categoryID := c.Param("category_id")
+	if categoryID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "category_id is required"})
+		return
+	}
+	response, err := h.categoryService.GetByCategoryID(c, &GetByCategoryIDRequest{CategoryID: categoryID})
+	if err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
 }
