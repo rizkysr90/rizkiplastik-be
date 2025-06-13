@@ -28,3 +28,11 @@ type GetListCategoryResponse struct {
 	util.PaginationData `json:"pagination"`
 	Data                []CategoryBaseModel `json:"data"`
 }
+
+type GetByCategoryIDRequest struct {
+	CategoryID string `json:"category_id"`
+}
+
+type GetByCategoryIDResponse struct {
+	CategoryDetailModel `json:"data"`
+}
