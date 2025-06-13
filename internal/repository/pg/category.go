@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -54,6 +55,27 @@ const (
 			updated_by = $4, 
 			updated_at = NOW()
 		WHERE id = $5
+	`
+	findListCategoryQuery = `
+		SELECT 
+		      id, 
+			  name, 
+			  code, 
+			  description, 
+			  is_active,
+			  created_at,
+			  updated_at,
+			  COUNT(*) OVER () AS total_count
+		FROM product_categories
+		WHERE $1 = '' OR name ILIKE '%' || $1 || '%'
+		AND $2 = '' OR code ILIKE '%' || $2 || '%'
+		AND CASE 
+		        WHEN $3 = 'ALL' THEN TRUE 
+		        WHEN $3 = 'TRUE' THEN is_active = true
+		        WHEN $3 = 'FALSE' THEN is_active = false
+		    END
+		ORDER BY created_at DESC
+		LIMIT $4 OFFSET $5
 	`
 )
 
@@ -121,4 +143,46 @@ func (c *Category) Update(ctx context.Context, data *repository.CategoryData) er
 		return fmt.Errorf("%w: %v", ErrDatabaseOperation, err)
 	}
 	return nil
+}
+func (c *Category) GetList(
+	ctx context.Context, filter *repository.CategoryDataFilter) (
+	[]repository.CategoryData, int, error) {
+	rows, err := c.db.Query(ctx, findListCategoryQuery,
+		filter.CategoryName,
+		filter.CategoryCode,
+		filter.IsActive,
+		filter.PageSize,
+		filter.Offset,
+	)
+	if err != nil {
+		return nil, 0, errors.New("failed to get list category : " + err.Error())
+	}
+	defer rows.Close()
+	var categories []repository.CategoryData
+	var totalCount int
+	for rows.Next() {
+		var category repository.CategoryData
+		var nullDescription sql.NullString
+		if err := rows.Scan(
+			&category.ID,
+			&category.Name,
+			&category.Code,
+			&nullDescription,
+			&category.IsActive,
+			&category.CreatedAt,
+			&category.UpdatedAt,
+			&totalCount,
+		); err != nil {
+			return nil, 0, errors.New("failed to scan category data : " + err.Error())
+		}
+
+		if nullDescription.Valid {
+			category.Description = nullDescription.String
+		}
+		categories = append(categories, category)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, errors.New("rows error : " + err.Error())
+	}
+	return categories, totalCount, nil
 }

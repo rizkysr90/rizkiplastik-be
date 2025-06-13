@@ -25,12 +25,11 @@ func (h *Handler) RegisterRoutes(
 	router *gin.Engine,
 	authMiddleware *middleware.AuthMiddleware) {
 
-	// Admin routes (only admin can access)
-	admin := router.Group("/api/v1/categories")
-	admin.Use(authMiddleware.RequireAuth(), authMiddleware.RequireRole("ADMIN"))
+	endpoint := router.Group("/api/v1/categories")
 	{
-		admin.POST("", h.CreateCategory)
-		admin.PUT("/:category_id", h.UpdateCategory)
+		endpoint.POST("/", h.CreateCategory)
+		endpoint.PUT("/:category_id", h.UpdateCategory)
+		endpoint.GET("/", h.GetListCategory)
 	}
 }
 
@@ -65,4 +64,27 @@ func (h *Handler) UpdateCategory(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+func (h *Handler) GetListCategory(c *gin.Context) {
+	pageSize := c.Query("page_size")
+	pageNumber := c.Query("page_number")
+	pagination, err := util.NewPaginationData(pageNumber, pageSize)
+	if err != nil {
+		errMsg := "invalid pagination data : " + err.Error()
+		c.JSON(http.StatusBadRequest, gin.H{"error": errMsg})
+		return
+	}
+	requestQueryParams := GetListCategoryRequest{
+		PaginationData: *pagination,
+		CategoryName:   c.Query("category_name"),
+		CategoryCode:   c.Query("category_code"),
+		IsActive:       c.Query("is_active"),
+	}
+	response, err := h.categoryService.GetListCategory(c, &requestQueryParams)
+	if err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
+
 }
