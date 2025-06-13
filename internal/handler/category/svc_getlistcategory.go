@@ -6,7 +6,7 @@ import (
 
 	"github.com/rizkysr90/rizkiplastik-be/internal/common"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
-	"github.com/rizkysr90/rizkiplastik-be/internal/util"
+	"github.com/rizkysr90/rizkiplastik-be/internal/util/httperror"
 )
 
 const (
@@ -24,26 +24,28 @@ func (req *reqGetListCategory) sanitize() {
 	req.CategoryCode = strings.TrimSpace(strings.ToUpper(req.CategoryCode))
 	req.IsActive = strings.TrimSpace(strings.ToUpper(req.IsActive))
 }
-func (req *reqGetListCategory) validate() error {
+func (req *reqGetListCategory) validate(ctx context.Context) error {
+	fieldValidationErrors := []httperror.FieldValidation{}
 	if err := common.ValidateMaxLengthStr(req.CategoryName, 50); err != nil {
-		return &util.ServiceError{
-			HTTPCode: 400,
-			Message:  err.Error(),
-		}
+		fieldValidationErrors = append(fieldValidationErrors,
+			httperror.NewFieldValidation(
+				fieldCategoryName, err.Error()))
 	}
 	if err := common.ValidateMaxLengthStr(req.CategoryCode, 3); err != nil {
-		return &util.ServiceError{
-			HTTPCode: 400,
-			Message:  err.Error(),
-		}
+		fieldValidationErrors = append(fieldValidationErrors,
+			httperror.NewFieldValidation(
+				fieldCategoryCode, err.Error()))
 	}
+
 	if req.IsActive != IsActiveTrue &&
 		req.IsActive != IsActiveFalse &&
 		req.IsActive != IsActiveAll {
-		return &util.ServiceError{
-			HTTPCode: 400,
-			Message:  "invalid is_active value",
-		}
+		fieldValidationErrors = append(fieldValidationErrors,
+			httperror.NewFieldValidation(
+				fieldIsActive, "invalid is_active value"))
+	}
+	if len(fieldValidationErrors) > 0 {
+		return httperror.NewMultiFieldValidation(ctx, fieldValidationErrors)
 	}
 	return nil
 }
@@ -54,7 +56,7 @@ func (s *Service) GetListCategory(ctx context.Context,
 		GetListCategoryRequest: request,
 	}
 	input.sanitize()
-	if err := input.validate(); err != nil {
+	if err := input.validate(ctx); err != nil {
 		return nil, err
 	}
 	filter := &repository.CategoryDataFilter{
@@ -66,7 +68,10 @@ func (s *Service) GetListCategory(ctx context.Context,
 	}
 	categories, totalCount, err := s.categoryRepo.GetList(ctx, filter)
 	if err != nil {
-		return nil, util.ConvertRepositoryError(err)
+		return nil, httperror.NewInternalServer(
+			ctx,
+			httperror.WithMessage("failed to get list category : "+err.Error()),
+		)
 	}
 	categoryBaseModels := make([]CategoryBaseModel, 0)
 	for _, category := range categories {

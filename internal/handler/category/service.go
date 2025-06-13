@@ -2,13 +2,15 @@ package category
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/rizkysr90/rizkiplastik-be/internal/common"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
-	"github.com/rizkysr90/rizkiplastik-be/internal/util"
+	"github.com/rizkysr90/rizkiplastik-be/internal/repository/pg"
+	"github.com/rizkysr90/rizkiplastik-be/internal/util/httperror"
 )
 
 type Service struct {
@@ -32,20 +34,21 @@ func (req *reqCreateCategory) sanitize() {
 		*req.Description = strings.TrimSpace(strings.ToUpper(*req.Description))
 	}
 }
-func (req *reqCreateCategory) validate() error {
-	if err := validateCategoryName(req.Name); err != nil {
-		return err
-	}
+func (req *reqCreateCategory) validate(ctx context.Context) error {
+	fieldValidationErrors := []httperror.FieldValidation{}
+	fieldValidationErrors = append(fieldValidationErrors, validateCategoryName(req.Name)...)
 	if err := common.ValidateMaxLengthStr(req.Code, 3); err != nil {
-		return &util.ServiceError{
-			HTTPCode: 400,
-			Message:  err.Error(),
-		}
+		fieldValidationErrors = append(
+			fieldValidationErrors,
+			httperror.NewFieldValidation(fieldCategoryCode, err.Error()))
 	}
 	if req.Description != nil {
-		if err := validateCategoryDescription(*req.Description); err != nil {
-			return err
-		}
+		fieldValidationErrors = append(
+			fieldValidationErrors,
+			validateCategoryDescription(*req.Description)...)
+	}
+	if len(fieldValidationErrors) > 0 {
+		return httperror.NewMultiFieldValidation(ctx, fieldValidationErrors)
 	}
 	return nil
 }
@@ -56,7 +59,7 @@ func (s *Service) CreateCategory(ctx context.Context,
 		CreateCategoryRequest: data,
 	}
 	input.sanitize()
-	if err := input.validate(); err != nil {
+	if err := input.validate(ctx); err != nil {
 		return err
 	}
 	// since we dont use middleware, we need to set the created by and updated by to system
@@ -72,7 +75,14 @@ func (s *Service) CreateCategory(ctx context.Context,
 		insertedData.Description = *data.Description
 	}
 	if err := s.categoryRepo.InsertTransaction(ctx, insertedData); err != nil {
-		return util.ConvertRepositoryError(err)
+		if errors.Is(err, pg.ErrAlreadyExists) {
+			return httperror.NewBadRequest(
+				ctx,
+				httperror.WithMessage("category already exists"))
+		}
+		return httperror.NewInternalServer(
+			ctx,
+			httperror.WithMessage("failed to create category : "+err.Error()))
 	}
 	return nil
 }

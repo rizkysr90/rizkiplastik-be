@@ -2,11 +2,13 @@ package category
 
 import (
 	"context"
+	"errors"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/rizkysr90/rizkiplastik-be/internal/common"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
-	"github.com/rizkysr90/rizkiplastik-be/internal/util"
+	"github.com/rizkysr90/rizkiplastik-be/internal/util/httperror"
 )
 
 type reqUpdateCategory struct {
@@ -21,20 +23,23 @@ func (req *reqUpdateCategory) sanitize() {
 	}
 }
 
-func (req *reqUpdateCategory) validate() error {
+func (req *reqUpdateCategory) validate(ctx context.Context) error {
+	fieldValidationErrors := []httperror.FieldValidation{}
 	if err := common.ValidateUUIDFormat(req.CategoryID); err != nil {
-		return &util.ServiceError{
-			HTTPCode: 400,
-			Message:  err.Error(),
-		}
+		fieldValidationErrors = append(
+			fieldValidationErrors,
+			httperror.NewFieldValidation(fieldCategoryID, err.Error()))
 	}
-	if err := validateCategoryName(req.CategoryName); err != nil {
-		return err
-	}
+	fieldValidationErrors = append(
+		fieldValidationErrors,
+		validateCategoryName(req.CategoryName)...)
 	if req.CategoryDescription != nil {
-		if err := validateCategoryDescription(*req.CategoryDescription); err != nil {
-			return err
-		}
+		fieldValidationErrors = append(
+			fieldValidationErrors,
+			validateCategoryDescription(*req.CategoryDescription)...)
+	}
+	if len(fieldValidationErrors) > 0 {
+		return httperror.NewMultiFieldValidation(ctx, fieldValidationErrors)
 	}
 	return nil
 }
@@ -43,7 +48,7 @@ func (s *Service) UpdateCategory(ctx context.Context, data *UpdateCategoryReques
 		UpdateCategoryRequest: data,
 	}
 	input.sanitize()
-	if err := input.validate(); err != nil {
+	if err := input.validate(ctx); err != nil {
 		return err
 	}
 	updatedCategory := &repository.CategoryData{
@@ -56,7 +61,12 @@ func (s *Service) UpdateCategory(ctx context.Context, data *UpdateCategoryReques
 		updatedCategory.Description = *input.CategoryDescription
 	}
 	if err := s.categoryRepo.Update(ctx, updatedCategory); err != nil {
-		return util.ConvertRepositoryError(err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return httperror.NewDataNotFound(
+				ctx, httperror.WithMessage("category not found"))
+		}
+		return httperror.NewInternalServer(
+			ctx, httperror.WithMessage("failed to update category : "+err.Error()))
 	}
 	return nil
 }
