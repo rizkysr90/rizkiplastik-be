@@ -65,10 +65,8 @@ func (s *Service) CreateCategory(ctx context.Context,
 		Name:      input.Name,
 		Code:      input.Code,
 		IsActive:  true,
-		CreatedBy: "system",
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
-		UpdatedBy: "system",
 	}
 	if data.Description != nil {
 		insertedData.Description = *data.Description

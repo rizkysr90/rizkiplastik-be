@@ -18,7 +18,16 @@ type CategoryData struct {
 	UpdatedAt   time.Time
 }
 
+// CategoryData Filter
+type CategoryDataFilter struct {
+	CategoryName string
+	CategoryCode string
+	IsActive     string
+	PageSize     int
+	Offset       int
+}
 type Category interface {
 	InsertTransaction(ctx context.Context, data *CategoryData) error
 	Update(ctx context.Context, data *CategoryData) error
+	GetList(ctx context.Context, filter *CategoryDataFilter) ([]CategoryData, int, error)
 }
