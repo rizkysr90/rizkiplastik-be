@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rizkysr90/rizkiplastik-be/internal/common"
+	"github.com/rizkysr90/rizkiplastik-be/internal/constants"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
-	"github.com/rizkysr90/rizkiplastik-be/internal/repository/pg"
 	"github.com/rizkysr90/rizkiplastik-be/internal/util/httperror"
 )
 
@@ -75,7 +75,7 @@ func (s *Service) CreateCategory(ctx context.Context,
 		insertedData.Description = *data.Description
 	}
 	if err := s.categoryRepo.InsertTransaction(ctx, insertedData); err != nil {
-		if errors.Is(err, pg.ErrAlreadyExists) {
+		if errors.Is(err, constants.ErrAlreadyExists) {
 			return httperror.NewBadRequest(
 				ctx,
 				httperror.WithMessage("category already exists"))

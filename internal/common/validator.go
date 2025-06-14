@@ -3,6 +3,7 @@ package common
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -31,6 +32,19 @@ func ValidateLenghtEqual(str string, length int) error {
 func ValidateUUIDFormat(str string) error {
 	if _, err := uuid.Parse(str); err != nil {
 		return errors.New("invalid uuid format")
+	}
+	return nil
+}
+func ValidateEquals(str string, allowedWords []string) error {
+	isTrue := false
+	for _, word := range allowedWords {
+		if strings.Contains(str, word) {
+			isTrue = true
+			break
+		}
+	}
+	if !isTrue {
+		return errors.New("string must contain only allowed words")
 	}
 	return nil
 }

@@ -24,6 +24,10 @@ func HandleServiceError(c *gin.Context, err error) {
 		}
 		return
 	}
+	if multiFieldValidation, ok := err.(*httperror.MultiFieldValidation); ok {
+		c.JSON(http.StatusBadRequest, multiFieldValidation)
+		return
+	}
 
 	// For non-ServiceError types, return 500
 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

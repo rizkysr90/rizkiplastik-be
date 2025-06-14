@@ -10,6 +10,8 @@ import (
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/authentication"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/category"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/onlinetransactions"
+	"github.com/rizkysr90/rizkiplastik-be/internal/handler/packagingtypes"
+	packagingtypesPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/packagingtypes/repository/pg"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/products"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/summary"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
@@ -93,6 +95,11 @@ func (s *Server) registerRoutes() {
 	// Category routes
 	categoryRepo := pg.NewCategory(s.db)
 	categoryService := category.NewService(categoryRepo)
-	categoryHandler := category.NewCategoryHandler(s.db, categoryService)
+	categoryHandler := category.NewCategoryHandler(categoryService)
 	categoryHandler.RegisterRoutes(s.router, authMiddleware)
+
+	// Packaging type routes
+	packagingTypeRepo := packagingtypesPg.NewPackagingType(s.db)
+	packagingTypeHandler := packagingtypes.NewHandler(packagingTypeRepo)
+	packagingTypeHandler.RegisterRoutes(s.router)
 }
