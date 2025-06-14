@@ -27,3 +27,11 @@ type ResponseGetPackagingTypes struct {
 	PaginationData *util.PaginationData  `json:"pagination_data"`
 	Data           []SimplePackagingType `json:"data"`
 }
+
+type RequestGetPackagingType struct {
+	PackagingID string `json:"packaging_id"`
+}
+
+type ResponseGetPackagingType struct {
+	Data *PackagingTypeExtended `json:"data"`
+}

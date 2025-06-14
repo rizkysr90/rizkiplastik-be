@@ -32,4 +32,7 @@ type PackagingType interface {
 		ctx context.Context,
 		filter *PackagingTypeFilter) (
 		[]PackagingTypeData, int, error)
+	FindByCategoryIDExtended(
+		ctx context.Context,
+		categoryID string) (*PackagingTypeData, error)
 }

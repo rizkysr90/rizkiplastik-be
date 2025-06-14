@@ -61,6 +61,20 @@ const (
 		ORDER BY created_at DESC
 		LIMIT $4 OFFSET $5
 	`
+	findByCategoryIDExtendedQuery = `
+		SELECT 
+			id, 
+			name, 
+			code,
+			description,
+			is_active,
+			created_at,
+			updated_at,
+			created_by,
+			updated_by
+		FROM packaging_types
+		WHERE id = $1
+	`
 )
 
 func (p *PackagingType) getByCode(ctx context.Context,
@@ -194,4 +208,27 @@ func (p *PackagingType) FindPaginatedPackagingTypes(
 		return nil, 0, err
 	}
 	return packagingTypes, totalCount, nil
+}
+func (p *PackagingType) FindByCategoryIDExtended(
+	ctx context.Context,
+	categoryID string) (*repository.PackagingTypeData, error) {
+	row := p.db.QueryRow(ctx, findByCategoryIDExtendedQuery, categoryID)
+	var packagingType repository.PackagingTypeData
+	if err := row.Scan(
+		&packagingType.ID,
+		&packagingType.Name,
+		&packagingType.Code,
+		&packagingType.Description,
+		&packagingType.IsActive,
+		&packagingType.CreatedAt,
+		&packagingType.UpdatedAt,
+		&packagingType.CreatedBy,
+		&packagingType.UpdatedBy,
+	); err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, pgx.ErrNoRows
+		}
+		return nil, err
+	}
+	return &packagingType, nil
 }
