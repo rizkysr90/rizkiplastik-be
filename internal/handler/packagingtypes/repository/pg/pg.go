@@ -39,6 +39,28 @@ const (
 		FROM packaging_types
 		WHERE id = $1
 	`
+	findPaginatedPackagingTypesQuery = `
+		SELECT 
+			id, 
+			name, 
+			code, 
+			is_active, 
+			created_at, 
+			updated_at, 
+			COUNT(*) OVER () AS total_count
+		FROM packaging_types
+		WHERE $1 = '' OR name LIKE '%' || $1 || '%'
+		AND ($2 = '' OR code = $2)
+		AND (
+			CASE 
+				WHEN $3 = 'TRUE' THEN is_active = true 
+				WHEN $3 = 'FALSE' THEN is_active = false 
+				ELSE TRUE
+			END
+		)
+		ORDER BY created_at DESC
+		LIMIT $4 OFFSET $5
+	`
 )
 
 func (p *PackagingType) getByCode(ctx context.Context,
@@ -134,4 +156,42 @@ func (p *PackagingType) UpdateTransaction(
 		return err
 	}
 	return nil
+}
+
+func (p *PackagingType) FindPaginatedPackagingTypes(
+	ctx context.Context,
+	filter *repository.PackagingTypeFilter) (
+	[]repository.PackagingTypeData, int, error) {
+	rows, err := p.db.Query(ctx, findPaginatedPackagingTypesQuery,
+		filter.Name,
+		filter.Code,
+		filter.IsActive,
+		filter.Limit,
+		filter.Offset,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var packagingTypes []repository.PackagingTypeData
+	var totalCount int
+	for rows.Next() {
+		var packagingType repository.PackagingTypeData
+		if err := rows.Scan(
+			&packagingType.ID,
+			&packagingType.Name,
+			&packagingType.Code,
+			&packagingType.IsActive,
+			&packagingType.CreatedAt,
+			&packagingType.UpdatedAt,
+			&totalCount,
+		); err != nil {
+			return nil, 0, err
+		}
+		packagingTypes = append(packagingTypes, packagingType)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return packagingTypes, totalCount, nil
 }

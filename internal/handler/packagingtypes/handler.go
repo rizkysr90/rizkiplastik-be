@@ -29,7 +29,7 @@ func (h *Handler) RegisterRoutes(
 	{
 		endpoint.POST("/", h.PostPackagingType)
 		endpoint.PUT("/:packaging_type_id", h.UpdatePackagingType)
-		// endpoint.GET("/", h.GetListPackagingType)
+		endpoint.GET("/", h.GetPaginatedPackagingTypes)
 		// endpoint.GET("/:packaging_type_id", h.GetByPackagingTypeID)
 	}
 }
@@ -61,4 +61,26 @@ func (h *Handler) UpdatePackagingType(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (h *Handler) GetPaginatedPackagingTypes(c *gin.Context) {
+	pageSize := c.Query("page_size")
+	pageNumber := c.Query("page_number")
+	pagination, err := util.NewPaginationData(pageNumber, pageSize)
+	if err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	requestQueryParams := model.RequestGetPackagingTypes{
+		PaginationData: *pagination,
+		Name:           c.Query("name"),
+		Code:           c.Query("code"),
+		IsActive:       c.Query("is_active"),
+	}
+	response, err := h.service.GetPackagingTypes(c, &requestQueryParams)
+	if err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
 }

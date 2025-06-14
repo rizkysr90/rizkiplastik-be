@@ -7,6 +7,7 @@ const (
 	fieldPackagingName        = "packaging_name"
 	fieldPackagingCode        = "packaging_code"
 	fieldPackagingDescription = "packaging_description"
+	fieldPackagingIsActive    = "is_active"
 )
 
 // PackagingTypeService represents the packaging types service

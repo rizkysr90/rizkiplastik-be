@@ -17,9 +17,19 @@ type PackagingTypeData struct {
 	CreatedBy   string
 	UpdatedBy   string
 }
-
+type PackagingTypeFilter struct {
+	Name     string
+	Code     string
+	IsActive string
+	Limit    int
+	Offset   int
+}
 type PackagingType interface {
 	InsertTransaction(ctx context.Context, data *PackagingTypeData) error
 	UpdateTransaction(
 		ctx context.Context, data *PackagingTypeData) error
+	FindPaginatedPackagingTypes(
+		ctx context.Context,
+		filter *PackagingTypeFilter) (
+		[]PackagingTypeData, int, error)
 }
