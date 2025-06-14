@@ -4,20 +4,18 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
 	"github.com/rizkysr90/rizkiplastik-be/internal/util"
 )
 
 // CategoryHandler handles HTTP requests for products
 type Handler struct {
-	db              *pgxpool.Pool
 	categoryService Service
 }
 
 // CategoryHandler creates a new product handler
-func NewCategoryHandler(db *pgxpool.Pool, categoryService Service) *Handler {
-	return &Handler{db: db, categoryService: categoryService}
+func NewCategoryHandler(categoryService Service) *Handler {
+	return &Handler{categoryService: categoryService}
 }
 
 // RegisterRoutes registers all category related routes

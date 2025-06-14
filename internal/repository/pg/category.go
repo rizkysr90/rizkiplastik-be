@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rizkysr90/rizkiplastik-be/internal/constants"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
 )
 
@@ -104,7 +105,7 @@ func (c *Category) InsertTransaction(
 		return err
 	}
 	if categoryByCode.ID != "" {
-		return ErrAlreadyExists
+		return constants.ErrAlreadyExists
 	}
 
 	_, err = tx.Exec(ctx,
