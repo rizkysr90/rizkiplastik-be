@@ -20,4 +20,6 @@ type PackagingTypeData struct {
 
 type PackagingType interface {
 	InsertTransaction(ctx context.Context, data *PackagingTypeData) error
+	UpdateTransaction(
+		ctx context.Context, data *PackagingTypeData) error
 }
