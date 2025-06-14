@@ -81,7 +81,7 @@ func (h *Handler) CreateOnlineTransaction(c *gin.Context) {
 		mapProductIDWithQty[product.ProductID] = product.Quantity
 	}
 	rows, err := tx.Query(c, ` 
-		SELECT id, name, cost_price, gross_profit_percentage, shopee_category
+		SELECT id, name, cost_price, gross_profit_percentage, shopee_category, shopee_fee_free_delivery_fee
         FROM products 
         WHERE id = ANY($1::uuid[])
 		`, listProductID)
@@ -99,6 +99,7 @@ func (h *Handler) CreateOnlineTransaction(c *gin.Context) {
 			&temp.CostPrice,
 			&temp.GrossProfitPercentage,
 			&temp.ShopeeCategory,
+			&temp.ShopeeFreeDeliveryFee,
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid scan"})
@@ -125,7 +126,12 @@ func (h *Handler) CreateOnlineTransaction(c *gin.Context) {
 	// Calculate totals
 	var totalBaseAmount, totalSaleAmount, totalNetProfit, totalFeeAmount float32 = 0, 0, 0, 0
 	for _, product := range listProduct {
-		productSalePrice, productFee := products.CalculateShopeePricing(product.CostPrice, product.GrossProfitPercentage, product.ShopeeCategory)
+		productSalePrice, productFee := products.CalculateShopeePricing(
+			product.CostPrice,
+			product.GrossProfitPercentage,
+			product.ShopeeFreeDeliveryFee,
+			product.ShopeeCategory,
+		)
 		mapProductIDWithSalePrice[product.ID.String()] = productSalePrice
 		mapProductIDWithFee[product.ID.String()] = productFee
 		totalBaseAmount += product.CostPrice * float32(mapProductIDWithQty[product.ID.String()])
@@ -591,7 +597,10 @@ func groupOrdersByOrderNumber(rows []RowData) map[string]*OrderData {
 func (h *Handler) queryProducts(c *gin.Context, productNames []string) (map[string]products.Product, error) {
 	productMap := make(map[string]products.Product)
 	productRows, err := h.db.Query(c, `
-		SELECT id, name, cost_price, gross_profit_percentage, shopee_category, COALESCE(shopee_varian_name, ''), shopee_name 
+		SELECT id, name, cost_price, 
+		gross_profit_percentage, 
+		shopee_category, COALESCE(shopee_varian_name, ''), shopee_name,
+		shopee_fee_free_delivery_fee
 		FROM products 
 		WHERE shopee_name = ANY($1::text[])
 		AND deleted_at IS NULL
@@ -611,6 +620,7 @@ func (h *Handler) queryProducts(c *gin.Context, productNames []string) (map[stri
 			&product.ShopeeCategory,
 			&product.ShopeeVarianName,
 			&product.ShopeeName,
+			&product.ShopeeFreeDeliveryFee,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan product data: %w", err)
@@ -674,7 +684,9 @@ func (h *Handler) processOrder(
 
 		grossProfitPercentage := product.GrossProfitPercentage
 
-		productSalePrice, productFee := products.CalculateShopeePricing(product.CostPrice, grossProfitPercentage, product.ShopeeCategory)
+		productSalePrice, productFee := products.CalculateShopeePricing(
+			product.CostPrice, grossProfitPercentage, product.ShopeeFreeDeliveryFee,
+			product.ShopeeCategory)
 		transactionProducts = append(transactionProducts, TransactionProduct{
 			ProductName: product.Name,
 			CostPrice:   product.CostPrice,

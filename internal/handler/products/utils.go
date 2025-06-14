@@ -3,7 +3,10 @@ package products
 import "math"
 
 // CalculateShopeePricing calculates the Shopee sale price and fee based on the formula
-func CalculateShopeePricing(costPrice, grossProfitPercentage float32, category string) (salePrice, fee float32) {
+func CalculateShopeePricing(
+	costPrice, grossProfitPercentage, shopeeFreeDeliveryFee float32,
+	category string,
+) (salePrice, fee float32) {
 	// 1. Find gross_profit_price_total = ROUND(cost_price * (gross_profit_percentage / 100) + cost_price)
 	grossProfitPriceTotal := float32(math.Round(float64(costPrice*(grossProfitPercentage/100) + costPrice)))
 
@@ -23,9 +26,10 @@ func CalculateShopeePricing(costPrice, grossProfitPercentage float32, category s
 	}
 
 	// b. Calculate service fee with max 10,000
-	serviceFee := 0.04 * grossProfitPriceTotal
-	if serviceFee > 10000 {
-		serviceFee = 10000
+	deliveryFreeServiceFee := shopeeFreeDeliveryFee / 100
+	serviceFee := deliveryFreeServiceFee * grossProfitPriceTotal
+	if serviceFee > 20000 {
+		serviceFee = 20000
 	}
 
 	// 3. Calculate total shopee fee
