@@ -4,19 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
-)
-
-// Sentinel errors - define once, use everywhere
-var (
-	ErrCategoryAlreadyExists = errors.New("category already exists")
-	ErrCategoryNotFound      = errors.New("category not found")
-	ErrDatabaseOperation     = errors.New("database operation failed")
-	ErrTransactionFailed     = errors.New("transaction failed")
 )
 
 type Category struct {
@@ -113,7 +104,7 @@ func (c *Category) InsertTransaction(
 		return err
 	}
 	if categoryByCode.ID != "" {
-		return ErrCategoryAlreadyExists
+		return ErrAlreadyExists
 	}
 
 	_, err = tx.Exec(ctx,
@@ -127,11 +118,10 @@ func (c *Category) InsertTransaction(
 		data.UpdatedBy,
 	)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrDatabaseOperation, err)
+		return errors.New("failed to insert category : " + err.Error())
 	}
-
 	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("%w: %v", ErrTransactionFailed, err)
+		return errors.New("failed to commit transaction : " + err.Error())
 	}
 	return nil
 }
@@ -141,7 +131,7 @@ func (c *Category) Update(ctx context.Context, data *repository.CategoryData) er
 	if data.Description != "" {
 		description = data.Description
 	}
-	_, err := c.db.Exec(
+	result, err := c.db.Exec(
 		ctx,
 		updateCategoryQuery,
 		data.Name,
@@ -151,7 +141,10 @@ func (c *Category) Update(ctx context.Context, data *repository.CategoryData) er
 		data.ID,
 	)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrDatabaseOperation, err)
+		return errors.New("failed to update category : " + err.Error())
+	}
+	if result.RowsAffected() == 0 {
+		return pgx.ErrNoRows
 	}
 	return nil
 }
@@ -206,10 +199,7 @@ func (c *Category) GetByID(ctx context.Context, categoryID string) (
 		&category.CreatedAt,
 		&category.UpdatedAt,
 	); err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, ErrCategoryNotFound
-		}
-		return nil, errors.New("failed to get category by id : " + err.Error())
+		return nil, err
 	}
 	if nullDescription.Valid {
 		category.Description = nullDescription.String
