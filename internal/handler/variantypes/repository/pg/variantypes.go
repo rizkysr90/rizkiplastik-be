@@ -42,7 +42,8 @@ const (
 		UPDATE variant_types SET
 			name = $2,
 			description = $3,
-			updated_by = $4,
+			is_active = $4,
+			updated_by = $5,
 			updated_at = NOW()
 		WHERE id = $1
 	`
@@ -122,6 +123,7 @@ func (v *VarianTypes) UpdateTransaction(
 		data.ID,
 		data.Name,
 		data.Description,
+		data.IsActive,
 		data.UpdatedBy,
 	)
 	if err != nil {
