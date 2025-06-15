@@ -21,7 +21,6 @@ type reqUpdatePackagingType struct {
 func (req *reqUpdatePackagingType) sanitize() {
 	req.PackagingID = strings.TrimSpace(req.PackagingID)
 	req.PackagingName = strings.TrimSpace(strings.ToUpper(req.PackagingName))
-	req.PackagingCode = strings.TrimSpace(strings.ToUpper(req.PackagingCode))
 	if req.PackagingDescription != nil {
 		*req.PackagingDescription = strings.TrimSpace(*req.PackagingDescription)
 	}
@@ -34,7 +33,6 @@ func (req *reqUpdatePackagingType) validateFields(ctx context.Context) error {
 			httperror.NewFieldValidation(fieldPackagingID, err.Error()))
 	}
 	fieldValidations = append(fieldValidations, validateCategoryTypeName(req.PackagingName)...)
-	fieldValidations = append(fieldValidations, validateCategoryTypeCode(req.PackagingCode)...)
 	if req.PackagingDescription != nil {
 		fieldValidations = append(fieldValidations,
 			validateCategoryTypeDescription(req.PackagingDescription)...)
@@ -57,7 +55,6 @@ func (s *PackagingType) UpdatePackagingType(
 	updatedData := &repository.PackagingTypeData{
 		ID:        input.PackagingID,
 		Name:      input.PackagingName,
-		Code:      input.PackagingCode,
 		IsActive:  input.IsActive,
 		UpdatedBy: "SYSTEM",
 	}
