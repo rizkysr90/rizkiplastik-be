@@ -48,3 +48,12 @@ func ValidateEquals(str string, allowedWords []string) error {
 	}
 	return nil
 }
+
+func ValidateOnlyAllowedUppercaseLetter(str, fieldName string) error {
+	for _, char := range str {
+		if char < 'A' || char > 'Z' {
+			return errors.New(fieldName + " must contain only allowed uppercase letter (A-Z)")
+		}
+	}
+	return nil
+}

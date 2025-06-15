@@ -12,13 +12,13 @@ import (
 
 // PackagingTypesHandler handles HTTP requests for packaging types
 type Handler struct {
-	service service.PackagingType
+	service *service.PackagingType
 }
 
 // NewHandler creates a new packaging types handler
 func NewHandler(packagingTypeRepo repository.PackagingType) *Handler {
 	service := service.NewPackagingType(packagingTypeRepo)
-	return &Handler{service: service}
+	return &Handler{service: &service}
 }
 
 // RegisterRoutes registers all category related routes

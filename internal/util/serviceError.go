@@ -30,5 +30,9 @@ func HandleServiceError(c *gin.Context, err error) {
 	}
 
 	// For non-ServiceError types, return 500
-	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	c.JSON(http.StatusInternalServerError, httperror.HTTPError{
+		Code:    http.StatusInternalServerError,
+		Info:    "internal server error",
+		Message: err.Error(),
+	})
 }
