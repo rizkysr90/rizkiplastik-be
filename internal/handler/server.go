@@ -13,6 +13,8 @@ import (
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/packagingtypes"
 	packagingtypesPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/packagingtypes/repository/pg"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/products"
+	"github.com/rizkysr90/rizkiplastik-be/internal/handler/sizeunits"
+	sizeunitsPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/sizeunits/repository/pg"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/summary"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository/pg"
@@ -102,4 +104,9 @@ func (s *Server) registerRoutes() {
 	packagingTypeRepo := packagingtypesPg.NewPackagingType(s.db)
 	packagingTypeHandler := packagingtypes.NewHandler(packagingTypeRepo)
 	packagingTypeHandler.RegisterRoutes(s.router)
+
+	// Size unit routes
+	sizeUnitRepo := sizeunitsPg.NewSizeUnits(s.db)
+	sizeUnitHandler := sizeunits.NewHandler(sizeUnitRepo)
+	sizeUnitHandler.RegisterRoutes(s.router)
 }
