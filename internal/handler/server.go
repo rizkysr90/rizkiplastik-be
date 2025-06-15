@@ -16,6 +16,8 @@ import (
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/sizeunits"
 	sizeunitsPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/sizeunits/repository/pg"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/summary"
+	"github.com/rizkysr90/rizkiplastik-be/internal/handler/variantypes"
+	variantypesPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/variantypes/repository/pg"
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository/pg"
 )
@@ -109,4 +111,9 @@ func (s *Server) registerRoutes() {
 	sizeUnitRepo := sizeunitsPg.NewSizeUnits(s.db)
 	sizeUnitHandler := sizeunits.NewHandler(sizeUnitRepo)
 	sizeUnitHandler.RegisterRoutes(s.router)
+
+	// Variant type routes
+	variantTypeRepo := variantypesPg.NewVarianTypes(s.db)
+	variantTypeHandler := variantypes.NewHandler(variantTypeRepo)
+	variantTypeHandler.RegisterRoutes(s.router)
 }
