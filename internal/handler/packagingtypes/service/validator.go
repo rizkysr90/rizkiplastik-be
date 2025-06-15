@@ -28,19 +28,20 @@ func validateCategoryTypeCode(code string) []httperror.FieldValidation {
 			httperror.NewFieldValidation(fieldPackagingCode, "code is required"))
 	}
 
-	// Validate exact length of 1
-	if err := common.ValidateLenghtEqual(code, 1); err != nil {
+	// validate max length of 3
+	if err := common.ValidateMaxLengthStr(code, 3); err != nil {
 		fieldValidations = append(fieldValidations,
 			httperror.NewFieldValidation(fieldPackagingCode, err.Error()))
 	}
 
-	// Validate that code is a single uppercase letter
-	if len(code) == 1 && (code[0] < 'A' || code[0] > 'Z') {
-		fieldValidations = append(fieldValidations,
-			httperror.NewFieldValidation(fieldPackagingCode,
-				"code must be a single uppercase letter (A-Z)"))
+	// validate only allowed uppercase letter (A-Z)
+	for _, char := range code {
+		if char < 'A' || char > 'Z' {
+			fieldValidations = append(fieldValidations,
+				httperror.NewFieldValidation(fieldPackagingCode,
+					"code only allowed uppercase letter (A-Z)"))
+		}
 	}
-
 	return fieldValidations
 }
 func validateCategoryTypeDescription(description *string) []httperror.FieldValidation {
