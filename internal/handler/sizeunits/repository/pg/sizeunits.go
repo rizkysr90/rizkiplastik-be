@@ -49,6 +49,31 @@ const (
 			updated_at = NOW()
 		WHERE id = $1
 	`
+	findSizeUnitsPaginatedSQL = `
+		SELECT
+			id,
+			name,
+			code,
+			unit_type,
+			is_active,
+			created_at,
+			updated_at,
+			COUNT(*) OVER () AS total_count
+		FROM size_units
+		WHERE 
+			($1 = '' OR name LIKE '%' || $1 || '%') AND
+			($2 = '' OR code = $2) AND
+			($3 = '' OR unit_type = $3) AND
+			(
+				CASE
+					WHEN $4 = 'TRUE' THEN is_active = true
+					WHEN $4 = 'FALSE' THEN is_active = false
+					ELSE TRUE
+				END
+			)
+		ORDER BY created_at DESC
+		LIMIT $5 OFFSET $6
+	`
 )
 
 func (s *SizeUnits) InsertTransaction(
@@ -118,4 +143,44 @@ func (s *SizeUnits) UpdateTrasaction(
 		return err
 	}
 	return nil
+}
+func (s *SizeUnits) FindPaginatedSizeUnits(
+	ctx context.Context,
+	filter repository.SizeUnitFilter) (
+	[]repository.SizeUnitData, int, error) {
+	rows, err := s.db.Query(ctx, findSizeUnitsPaginatedSQL,
+		filter.SizeUnitName,
+		filter.SizeUnitCode,
+		filter.SizeUnitType,
+		filter.IsActive,
+		filter.Limit,
+		filter.Offset,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var sizeUnits []repository.SizeUnitData
+	var totalCount int
+	for rows.Next() {
+		var sizeUnit repository.SizeUnitData
+		err = rows.Scan(
+			&sizeUnit.SizeUnitID,
+			&sizeUnit.SizeUnitName,
+			&sizeUnit.SizeUnitCode,
+			&sizeUnit.SizeUnitType,
+			&sizeUnit.IsActive,
+			&sizeUnit.CreatedAt,
+			&sizeUnit.UpdatedAt,
+			&totalCount,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		sizeUnits = append(sizeUnits, sizeUnit)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return sizeUnits, totalCount, nil
 }

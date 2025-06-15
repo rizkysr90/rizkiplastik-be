@@ -25,6 +25,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 
 	endpoint.POST("/", h.PostSizeUnit)
 	endpoint.PUT("/:size_unit_id", h.PutSizeUnit)
+	endpoint.GET("/", h.GetSizeUnits)
 }
 
 func (h *Handler) PostSizeUnit(c *gin.Context) {
@@ -52,4 +53,33 @@ func (h *Handler) PutSizeUnit(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+func (h *Handler) GetSizeUnits(c *gin.Context) {
+
+	pageNumber := c.Query("page_number")
+	pageSize := c.Query("page_size")
+	sizeUnitName := c.Query("size_unit_name")
+	sizeUnitCode := c.Query("size_unit_code")
+	sizeUnitType := c.Query("size_unit_type")
+	isActive := c.Query("is_active")
+
+	pagination, err := util.NewPaginationData(pageNumber, pageSize)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	request := model.RequestGetSizeUnits{
+		PaginationData: *pagination,
+		SizeUnitName:   sizeUnitName,
+		SizeUnitCode:   sizeUnitCode,
+		SizeUnitType:   sizeUnitType,
+		IsActive:       isActive,
+	}
+
+	response, err := h.service.GetSizeUnits(c, &request)
+	if err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
 }
