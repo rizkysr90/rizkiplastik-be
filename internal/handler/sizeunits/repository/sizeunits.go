@@ -21,4 +21,5 @@ type SizeUnitData struct {
 
 type SizeUnits interface {
 	InsertTransaction(ctx context.Context, data SizeUnitData) error
+	UpdateTrasaction(ctx context.Context, data SizeUnitData) error
 }

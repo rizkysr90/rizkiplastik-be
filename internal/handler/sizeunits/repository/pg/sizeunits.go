@@ -38,6 +38,17 @@ const (
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7)
 	`
+	updateSizeUnitSQL = `
+		UPDATE size_units
+		SET
+			name = $2,
+			unit_type = $3,
+			description = $4,
+			updated_by = $5,
+			is_active = $6,
+			updated_at = NOW()
+		WHERE id = $1
+	`
 )
 
 func (s *SizeUnits) InsertTransaction(
@@ -71,6 +82,36 @@ func (s *SizeUnits) InsertTransaction(
 	)
 	if err != nil {
 		return err
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (s *SizeUnits) UpdateTrasaction(
+	ctx context.Context,
+	data repository.SizeUnitData) error {
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{
+		IsoLevel: pgx.ReadCommitted,
+	})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	rows, err := tx.Exec(ctx, updateSizeUnitSQL,
+		data.SizeUnitID,
+		data.SizeUnitName,
+		data.SizeUnitType,
+		data.SizeUnitDescription,
+		data.UpdatedBy,
+		data.IsActive,
+	)
+	if err != nil {
+		return err
+	}
+	if rows.RowsAffected() == 0 {
+		return pgx.ErrNoRows
 	}
 	err = tx.Commit(ctx)
 	if err != nil {

@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	endpoint := router.Group("/api/v1/size-units")
 
 	endpoint.POST("/", h.PostSizeUnit)
+	endpoint.PUT("/:size_unit_id", h.PutSizeUnit)
 }
 
 func (h *Handler) PostSizeUnit(c *gin.Context) {
@@ -37,4 +38,18 @@ func (h *Handler) PostSizeUnit(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{})
+}
+
+func (h *Handler) PutSizeUnit(c *gin.Context) {
+	var request model.RequestUpdateSizeUnit
+	request.SizeUnitID = c.Param("size_unit_id")
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.service.UpdateSizeUnit(c, request); err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
 }

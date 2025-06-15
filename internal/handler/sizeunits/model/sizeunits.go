@@ -6,3 +6,11 @@ type RequestCreateSizeUnit struct {
 	SizeUnitType        string  `json:"size_unit_type" binding:"required"`
 	SizeUnitDescription *string `json:"size_unit_description,omitempty"`
 }
+
+type RequestUpdateSizeUnit struct {
+	SizeUnitID          string
+	SizeUnitName        string  `json:"size_unit_name" binding:"required"`
+	SizeUnitType        string  `json:"size_unit_type" binding:"required"`
+	SizeUnitDescription *string `json:"size_unit_description,omitempty"`
+	IsActive            bool    `json:"is_active"`
+}
