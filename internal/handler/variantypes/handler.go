@@ -25,6 +25,7 @@ func NewHandler(
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	endpoint := router.Group("/api/v1/variant-types")
 	endpoint.POST("/", h.PostVariantType)
+	endpoint.PUT("/:variant_type_id", h.PutVariantType)
 }
 
 func (h *Handler) PostVariantType(c *gin.Context) {
@@ -38,4 +39,18 @@ func (h *Handler) PostVariantType(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{})
+}
+func (h *Handler) PutVariantType(c *gin.Context) {
+	variantTypeID := c.Param("variant_type_id")
+	var input model.RequestUpdateVarianType
+	input.VarianTypeID = variantTypeID
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.service.UpdateVarianType(c, &input); err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
 }

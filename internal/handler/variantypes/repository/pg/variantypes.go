@@ -34,8 +34,35 @@ const (
 		SELECT id, name
 		FROM variant_types WHERE name = $1
 	`
+	findVarianTypeByIdQuery = `
+		SELECT id, name
+		FROM variant_types WHERE id = $1
+	`
+	updateVariantTypeQuery = `
+		UPDATE variant_types SET
+			name = $2,
+			description = $3,
+			updated_by = $4,
+			updated_at = NOW()
+		WHERE id = $1
+	`
 )
 
+func (v *VarianTypes) findVarianTypeByName(
+	ctx context.Context, tx pgx.Tx, name string) (*repository.VarianTypeData, error) {
+	var varianTypeByName repository.VarianTypeData
+	err := tx.QueryRow(ctx, findVarianTypeByNameQuery, name).Scan(
+		&varianTypeByName.ID,
+		&varianTypeByName.Name,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+	if varianTypeByName.ID != "" {
+		return nil, constants.ErrAlreadyExists
+	}
+	return &varianTypeByName, nil
+}
 func (v *VarianTypes) InsertTransaction(
 	ctx context.Context, data *repository.VarianTypeData) error {
 	tx, err := v.db.BeginTx(ctx, pgx.TxOptions{
@@ -45,24 +72,56 @@ func (v *VarianTypes) InsertTransaction(
 		return err
 	}
 	defer tx.Rollback(ctx)
-
-	var varianTypeByName repository.VarianTypeData
-	err = tx.QueryRow(ctx, findVarianTypeByNameQuery, data.Name).Scan(
-		&varianTypeByName.ID,
-		&varianTypeByName.Name,
-	)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	_, err = v.findVarianTypeByName(ctx, tx, data.Name)
+	if err != nil {
 		return err
 	}
-	if varianTypeByName.ID != "" {
-		return constants.ErrAlreadyExists
-	}
-
 	_, err = tx.Exec(ctx, insertVariantTypeQuery,
 		data.ID,
 		data.Name,
 		data.Description,
 		data.CreatedBy,
+		data.UpdatedBy,
+	)
+	if err != nil {
+		return err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+func (v *VarianTypes) UpdateTransaction(
+	ctx context.Context, data *repository.VarianTypeData) error {
+	tx, err := v.db.BeginTx(ctx, pgx.TxOptions{
+		IsoLevel: pgx.ReadCommitted,
+	})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var varianTypeById repository.VarianTypeData
+	err = tx.QueryRow(ctx, findVarianTypeByIdQuery, data.ID).Scan(
+		&varianTypeById.ID,
+		&varianTypeById.Name,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pgx.ErrNoRows
+		}
+		return err
+	}
+	if varianTypeById.Name != data.Name {
+		_, err = v.findVarianTypeByName(ctx, tx, data.Name)
+		if err != nil {
+			return err
+		}
+	}
+	_, err = tx.Exec(ctx, updateVariantTypeQuery,
+		data.ID,
+		data.Name,
+		data.Description,
 		data.UpdatedBy,
 	)
 	if err != nil {

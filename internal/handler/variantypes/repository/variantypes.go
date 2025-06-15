@@ -20,4 +20,6 @@ type VarianTypeData struct {
 type VarianType interface {
 	InsertTransaction(
 		ctx context.Context, data *VarianTypeData) error
+	UpdateTransaction(
+		ctx context.Context, data *VarianTypeData) error
 }
