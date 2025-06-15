@@ -9,3 +9,10 @@ type VarianTypeSimple struct {
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
+
+type VarianTypeExtended struct {
+	*VarianTypeSimple
+	VarianTypeDescription string `json:"variant_type_description"`
+	CreatedBy             string `json:"created_by"`
+	UpdatedBy             string `json:"updated_by"`
+}

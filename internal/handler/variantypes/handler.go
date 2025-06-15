@@ -27,6 +27,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	endpoint.POST("/", h.PostVariantType)
 	endpoint.PUT("/:variant_type_id", h.PutVariantType)
 	endpoint.GET("/", h.GetVarianTypes)
+	endpoint.GET("/:variant_type_id", h.GetVarianType)
 }
 
 func (h *Handler) PostVariantType(c *gin.Context) {
@@ -72,6 +73,19 @@ func (h *Handler) GetVarianTypes(c *gin.Context) {
 		IsActive:       isActive,
 	}
 	response, err := h.service.GetVarianTypes(c, &request)
+	if err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *Handler) GetVarianType(c *gin.Context) {
+	variantTypeID := c.Param("variant_type_id")
+	request := model.RequestGetVarianType{
+		VarianTypeID: variantTypeID,
+	}
+	response, err := h.service.GetVarianType(c, &request)
 	if err != nil {
 		util.HandleServiceError(c, err)
 		return

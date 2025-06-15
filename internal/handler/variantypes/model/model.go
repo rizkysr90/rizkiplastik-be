@@ -24,3 +24,11 @@ type ResponseVarianTypePaginated struct {
 	Pagination *util.PaginationData `json:"pagination"`
 	Data       []VarianTypeSimple   `json:"data"`
 }
+
+type RequestGetVarianType struct {
+	VarianTypeID string `json:"variant_type_id"`
+}
+
+type ResponseGetVarianType struct {
+	Data VarianTypeExtended `json:"data"`
+}

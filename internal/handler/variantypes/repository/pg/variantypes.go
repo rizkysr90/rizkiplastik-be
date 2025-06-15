@@ -68,6 +68,18 @@ const (
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
 	`
+	findVarianTypeByIdExtendedSQL = `
+		SELECT 
+			id, 
+			name, 
+			description, 
+			is_active, 
+			created_at, 
+			updated_at, 
+			created_by, 
+			updated_by
+		FROM variant_types WHERE id = $1
+	`
 )
 
 func (v *VarianTypes) findVarianTypeByName(
@@ -189,4 +201,22 @@ func (v *VarianTypes) FindVarianTypePaginated(
 		return nil, 0, err
 	}
 	return variantTypes, totalRows, nil
+}
+func (v *VarianTypes) FindVarianTypeByIdExtended(
+	ctx context.Context, id string) (*repository.VarianTypeData, error) {
+	var variantType repository.VarianTypeData
+	err := v.db.QueryRow(ctx, findVarianTypeByIdExtendedSQL, id).Scan(
+		&variantType.ID,
+		&variantType.Name,
+		&variantType.Description,
+		&variantType.IsActive,
+		&variantType.CreatedAt,
+		&variantType.UpdatedAt,
+		&variantType.CreatedBy,
+		&variantType.UpdatedBy,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &variantType, nil
 }

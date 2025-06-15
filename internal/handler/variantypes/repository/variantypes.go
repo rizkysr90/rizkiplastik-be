@@ -30,4 +30,6 @@ type VarianType interface {
 	FindVarianTypePaginated(
 		ctx context.Context,
 		filter VarianTypeFilter) ([]VarianTypeData, int, error)
+	FindVarianTypeByIdExtended(
+		ctx context.Context, id string) (*VarianTypeData, error)
 }
