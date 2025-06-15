@@ -74,6 +74,19 @@ const (
 		ORDER BY created_at DESC
 		LIMIT $5 OFFSET $6
 	`
+	findSizeUnitByIDExtendedSQL = `
+		SELECT
+			id,
+			name,
+			code,
+			unit_type,
+			is_active,
+			description,
+			created_at,
+			updated_at
+		FROM size_units
+		WHERE id = $1
+	`
 )
 
 func (s *SizeUnits) InsertTransaction(
@@ -183,4 +196,27 @@ func (s *SizeUnits) FindPaginatedSizeUnits(
 		return nil, 0, err
 	}
 	return sizeUnits, totalCount, nil
+}
+func (s *SizeUnits) FindSizeUnitByIDExtended(
+	ctx context.Context,
+	sizeUnitID string) (*repository.SizeUnitData, error) {
+	var sizeUnit repository.SizeUnitData
+	err := s.db.QueryRow(
+		ctx,
+		findSizeUnitByIDExtendedSQL,
+		sizeUnitID,
+	).Scan(
+		&sizeUnit.SizeUnitID,
+		&sizeUnit.SizeUnitName,
+		&sizeUnit.SizeUnitCode,
+		&sizeUnit.SizeUnitType,
+		&sizeUnit.IsActive,
+		&sizeUnit.SizeUnitDescription,
+		&sizeUnit.CreatedAt,
+		&sizeUnit.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &sizeUnit, nil
 }

@@ -35,4 +35,7 @@ type SizeUnits interface {
 		ctx context.Context,
 		filter SizeUnitFilter) (
 		[]SizeUnitData, int, error)
+	FindSizeUnitByIDExtended(
+		ctx context.Context,
+		sizeUnitID string) (*SizeUnitData, error)
 }

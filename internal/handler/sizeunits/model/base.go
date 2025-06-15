@@ -13,3 +13,8 @@ type SimpleSizeUnit struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
+
+type SizeUnitExtended struct {
+	SimpleSizeUnit
+	SizeUnitDescription string `json:"size_unit_description"`
+}

@@ -28,3 +28,11 @@ type ResponseGetSizeUnits struct {
 	PaginationData *util.PaginationData `json:"pagination_data"`
 	Data           []SimpleSizeUnit     `json:"data"`
 }
+
+type RequestGetSizeUnit struct {
+	SizeUnitID string
+}
+
+type ResponseGetSizeUnit struct {
+	Data SizeUnitExtended `json:"data"`
+}
