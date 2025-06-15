@@ -47,6 +47,27 @@ const (
 			updated_at = NOW()
 		WHERE id = $1
 	`
+	findVarianTypePaginatedSQL = `
+		SELECT id, 
+		name, 
+		is_active,
+		created_at, 
+		updated_at,
+		COUNT(*) OVER() AS total_rows
+		FROM variant_types
+		WHERE (
+			name = $1 OR name LIKE '%' || $1 || '%'
+		) AND
+		(
+			CASE 
+				WHEN $4 = 'TRUE' THEN is_active = true 
+				WHEN $4 = 'FALSE' THEN is_active = false 
+				ELSE true
+			END
+		)
+		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
+	`
 )
 
 func (v *VarianTypes) findVarianTypeByName(
@@ -133,4 +154,39 @@ func (v *VarianTypes) UpdateTransaction(
 		return err
 	}
 	return nil
+}
+func (v *VarianTypes) FindVarianTypePaginated(
+	ctx context.Context,
+	filter repository.VarianTypeFilter) ([]repository.VarianTypeData, int, error) {
+	rows, err := v.db.Query(ctx, findVarianTypePaginatedSQL,
+		filter.Name,
+		filter.Limit,
+		filter.Offset,
+		filter.IsActive,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	var variantTypes []repository.VarianTypeData
+	var totalRows int
+	for rows.Next() {
+		var variantType repository.VarianTypeData
+		err := rows.Scan(
+			&variantType.ID,
+			&variantType.Name,
+			&variantType.IsActive,
+			&variantType.CreatedAt,
+			&variantType.UpdatedAt,
+			&totalRows,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		variantTypes = append(variantTypes, variantType)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return variantTypes, totalRows, nil
 }

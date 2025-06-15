@@ -16,10 +16,18 @@ type VarianTypeData struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
-
+type VarianTypeFilter struct {
+	Name     string
+	IsActive string
+	Offset   int
+	Limit    int
+}
 type VarianType interface {
 	InsertTransaction(
 		ctx context.Context, data *VarianTypeData) error
 	UpdateTransaction(
 		ctx context.Context, data *VarianTypeData) error
+	FindVarianTypePaginated(
+		ctx context.Context,
+		filter VarianTypeFilter) ([]VarianTypeData, int, error)
 }
