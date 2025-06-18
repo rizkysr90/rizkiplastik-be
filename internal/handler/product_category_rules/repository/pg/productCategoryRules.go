@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	errCategoryNotFound      = errors.New("category not found")
-	errPackagingTypeNotFound = errors.New("packaging type not found")
-	errRuleAlreadyExists     = errors.New("rule already exists")
-	errUniqueViolation       = errors.New("unique violation")
+	ErrCategoryNotFound      = errors.New("category not found")
+	ErrPackagingTypeNotFound = errors.New("packaging type not found")
+	ErrRuleAlreadyExists     = errors.New("rule already exists")
+	ErrUniqueViolation       = errors.New("unique violation")
 )
 
 type ProductCategoryRules struct {
@@ -30,7 +30,7 @@ func NewProductCategoryRules(db *pgxpool.Pool) *ProductCategoryRules {
 
 const (
 	insertProductCategoryRules = `
-		INSERT INTO product_category_rules 
+		INSERT INTO product_categories_packaging_rules 
 		(
 			rule_id, 
 			category_id,
@@ -48,15 +48,15 @@ const (
 			$3, 
 			$4, 
 			NOW(), 
-			$6, 
+			$5, 
 			NOW(), 
-			$8
+			$6
 		)
 	`
 	checkRuleByCategoryIDAndPackagingTypeID = `
 		SELECT 
-			rule_id,
-		FROM product_category_rules
+			rule_id
+		FROM product_categories_packaging_rules
 		WHERE category_id = $1 AND packaging_type_id = $2
 	`
 	checkCategoryIDSQL = `
@@ -115,9 +115,12 @@ func (r *ProductCategoryRules) InsertTransaction(
 		if errors.As(err, &pgErr) {
 			// Check for unique violation error code
 			if pgErr.Code == constants.ErrCodePostgreUniqueViolation {
-				return errUniqueViolation
+				return ErrUniqueViolation
 			}
 		}
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 	return nil
@@ -138,7 +141,7 @@ func (r *ProductCategoryRules) checkExistingRule(
 		return err
 	}
 	if ruleID != "" {
-		return errRuleAlreadyExists
+		return ErrRuleAlreadyExists
 	}
 	return nil
 }
@@ -155,7 +158,7 @@ func (r *ProductCategoryRules) checkCategoryID(
 	).Scan(&productCategoryID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return errCategoryNotFound
+			return ErrCategoryNotFound
 		}
 		return err
 	}
@@ -174,7 +177,7 @@ func (r *ProductCategoryRules) checkPackagingTypeID(
 	).Scan(&packagingTypeID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return errPackagingTypeNotFound
+			return ErrPackagingTypeNotFound
 		}
 		return err
 	}
