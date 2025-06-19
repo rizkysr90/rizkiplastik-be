@@ -24,4 +24,8 @@ type ProductCategoryRules interface {
 		ctx context.Context,
 		data *ProductCategoryRulesData,
 	) error
+	UpdateTransaction(
+		ctx context.Context,
+		data *ProductCategoryRulesData,
+	) error
 }

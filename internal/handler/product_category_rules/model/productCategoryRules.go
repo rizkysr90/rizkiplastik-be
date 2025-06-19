@@ -7,7 +7,8 @@ type CreateRulesRequest struct {
 }
 
 type UpdateRulesRequest struct {
-	ProductCategoryID string `json:"product_category_id"`
+	RuleID            string
+	ProductCategoryID string
 	PackagingTypeID   string `json:"packaging_type_id"`
 	IsDefault         bool   `json:"is_default"`
 }

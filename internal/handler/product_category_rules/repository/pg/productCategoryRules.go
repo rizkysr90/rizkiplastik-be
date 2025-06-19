@@ -16,6 +16,7 @@ var (
 	ErrPackagingTypeNotFound = errors.New("packaging type not found")
 	ErrRuleAlreadyExists     = errors.New("rule already exists")
 	ErrUniqueViolation       = errors.New("unique violation")
+	ErrRuleNotFound          = errors.New("rule not found")
 )
 
 type ProductCategoryRules struct {
@@ -71,6 +72,18 @@ const (
 		FROM packaging_types
 		WHERE id = $1 and is_active = true
 	`
+	updateRuleSQL = `
+		UPDATE 
+			product_categories_packaging_rules
+		SET
+			is_default = $2,
+			packaging_type_id = $3,
+			updated_at = NOW(),
+			updated_by = $4
+		WHERE rule_id = $1 
+		AND is_active = true
+		AND category_id = $5
+	`
 )
 
 func (r *ProductCategoryRules) InsertTransaction(
@@ -119,6 +132,57 @@ func (r *ProductCategoryRules) InsertTransaction(
 			}
 		}
 		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+func (r *ProductCategoryRules) UpdateTransaction(
+	ctx context.Context,
+	data *repository.ProductCategoryRulesData,
+) error {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{
+		IsoLevel: pgx.ReadCommitted,
+	})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	// Validate category id
+	if err := r.checkCategoryID(ctx, tx, data.CategoryID); err != nil {
+		return err
+	}
+	// Validate packaging type id
+	if err := r.checkPackagingTypeID(ctx, tx, data.PackagingTypeID); err != nil {
+		return err
+	}
+	// Validate existing rule
+	if err := r.checkExistingRule(ctx, tx, data); err != nil {
+		return err
+	}
+	// Update product category rules
+	result, err := tx.Exec(
+		ctx,
+		updateRuleSQL,
+		data.RuleID,
+		data.IsDefault,
+		data.PackagingTypeID,
+		data.UpdatedBy,
+		data.CategoryID,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			// Check for unique violation error code
+			if pgErr.Code == constants.ErrCodePostgreUniqueViolation {
+				return ErrUniqueViolation
+			}
+		}
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrRuleNotFound
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
