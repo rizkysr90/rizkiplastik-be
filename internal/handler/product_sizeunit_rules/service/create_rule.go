@@ -45,6 +45,7 @@ func (s *ProductSizeUnitRulesService) CreateRule(
 	ctx context.Context,
 	request *model.CreateSizeUnitRulesRequest,
 ) error {
+	userID := ctx.Value("userID").(string)
 	input := &reqCreateSizeUnitRules{
 		CreateSizeUnitRulesRequest: request,
 	}
@@ -56,9 +57,9 @@ func (s *ProductSizeUnitRulesService) CreateRule(
 		RuleID:            uuid.NewString(),
 		ProductCategoryID: input.ProductCategoryID,
 		SizeUnitID:        input.SizeUnitID,
-		CreatedBy:         "SYSTEM",
+		CreatedBy:         userID,
 		IsDefault:         false,
-		UpdatedBy:         "SYSTEM",
+		UpdatedBy:         userID,
 	}
 	if input.IsDefault != nil {
 		data.IsDefault = *input.IsDefault

@@ -44,5 +44,6 @@ type ProductSizeUnitRules interface {
 		ctx context.Context,
 		ruleID string,
 		isActive bool,
+		userID string,
 	) error
 }

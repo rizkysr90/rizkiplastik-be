@@ -55,12 +55,14 @@ func NewServer(db *pgxpool.Pool, cfg *config.Config) *Server {
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	router.Use(cors.New(config))
 
+	// Session middleware
+	router.Use(middleware.Session())
+
 	server := &Server{
 		router: router,
 		db:     db,
 		cfg:    cfg,
 	}
-
 	// Register routes
 	server.registerRoutes()
 

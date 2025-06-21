@@ -42,6 +42,7 @@ func (s *ProductSizeUnitRulesService) UpdateRule(
 	ctx context.Context,
 	request *model.UpdateSizeUnitRulesRequest,
 ) error {
+	userID := ctx.Value("userID").(string)
 	input := &reqUpdateRule{
 		UpdateSizeUnitRulesRequest: request,
 	}
@@ -54,7 +55,7 @@ func (s *ProductSizeUnitRulesService) UpdateRule(
 		SizeUnitID:        input.SizeUnitID,
 		ProductCategoryID: input.ProductCategoryID,
 		IsDefault:         input.IsDefault,
-		UpdatedBy:         "SYSTEM",
+		UpdatedBy:         userID,
 	}
 	if err := s.productSizeUnitRulesRepository.UpdateTransaction(ctx, updatedData); err != nil {
 		return handleRepositoryError(ctx, err)

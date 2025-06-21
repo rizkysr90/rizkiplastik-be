@@ -82,7 +82,9 @@ const (
 	updateStatusRuleSizeUnitSQL = `
 		UPDATE product_categories_size_unit_rules
 		SET
-			is_active = $2
+			is_active = $2,
+			updated_at = NOW(),
+			updated_by = $3
 		WHERE rule_id = $1
 	`
 )
@@ -252,12 +254,14 @@ func (pg *ProductSizeUnitRules) UpdateStatusRule(
 	ctx context.Context,
 	ruleID string,
 	isActive bool,
+	userID string,
 ) error {
 	row, err := pg.db.Exec(
 		ctx,
 		updateStatusRuleSizeUnitSQL,
 		ruleID,
 		isActive,
+		userID,
 	)
 	if err != nil {
 		return err
