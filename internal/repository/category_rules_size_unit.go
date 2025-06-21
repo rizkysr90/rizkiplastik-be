@@ -40,4 +40,9 @@ type ProductSizeUnitRules interface {
 		ctx context.Context,
 		filter ProductSizeUnitRulesFilter,
 	) ([]ProductSizeUnitRulesData, error)
+	UpdateStatusRule(
+		ctx context.Context,
+		ruleID string,
+		isActive bool,
+	) error
 }

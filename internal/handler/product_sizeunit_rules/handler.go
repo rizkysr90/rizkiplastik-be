@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	endpoint.POST("/:product_category_id/size-unit-rules", h.PostSizeUnitRules)
 	endpoint.PUT("/:product_category_id/size-unit-rules/:rule_id", h.UpdateSizeUnitRules)
 	endpoint.GET("/:product_category_id/size-unit-rules", h.GetSizeUnitRules)
+	endpoint.PATCH("/size-unit-rules/:rule_id/status", h.UpdateSizeUnitRulesStatus)
 }
 
 func (h *Handler) PostSizeUnitRules(c *gin.Context) {
@@ -77,4 +78,20 @@ func (h *Handler) GetSizeUnitRules(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *Handler) UpdateSizeUnitRulesStatus(c *gin.Context) {
+	ruleID := c.Param("rule_id")
+	var request model.UpdateSizeUnitRulesStatusRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+	}
+	request.RuleID = ruleID
+	if err := h.service.UpdateRuleStatus(c, &request); err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
 }

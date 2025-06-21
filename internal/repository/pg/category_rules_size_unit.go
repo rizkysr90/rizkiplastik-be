@@ -79,6 +79,12 @@ const (
 			END
 		)
 	`
+	updateStatusRuleSizeUnitSQL = `
+		UPDATE product_categories_size_unit_rules
+		SET
+			is_active = $2
+		WHERE rule_id = $1
+	`
 )
 
 type ProductSizeUnitRules struct {
@@ -241,4 +247,23 @@ func (pg *ProductSizeUnitRules) FindSizeUnitRulesByCategoryID(
 		rules = append(rules, rule)
 	}
 	return rules, nil
+}
+func (pg *ProductSizeUnitRules) UpdateStatusRule(
+	ctx context.Context,
+	ruleID string,
+	isActive bool,
+) error {
+	row, err := pg.db.Exec(
+		ctx,
+		updateStatusRuleSizeUnitSQL,
+		ruleID,
+		isActive,
+	)
+	if err != nil {
+		return err
+	}
+	if row.RowsAffected() == 0 {
+		return ErrRuleSizeUnitNotFound
+	}
+	return nil
 }
