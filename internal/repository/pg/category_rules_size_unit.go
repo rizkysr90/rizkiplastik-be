@@ -54,6 +54,31 @@ const (
 		AND is_active = true
 		AND category_id = $5
 	`
+	findSizeUnitRulesByCategoryIDSQL = `
+		SELECT
+			a.rule_id,
+			a.category_id,
+			a.size_unit_id,
+			a.is_default,
+			a.is_active,
+			b.code,
+			b.name,
+			b.unit_type
+		FROM product_categories_size_unit_rules a
+		JOIN size_units b
+			ON b.id = a.size_unit_id
+		WHERE a.category_id = $1
+		AND (
+			CASE
+				WHEN $2 = 'TRUE' THEN
+					a.is_active = true
+				WHEN $2 = 'FALSE' THEN
+					a.is_active = false
+				ELSE
+				  	true
+			END
+		)
+	`
 )
 
 type ProductSizeUnitRules struct {
@@ -182,4 +207,38 @@ func (r *ProductSizeUnitRules) checkExistingRule(
 		return ErrRuleSizeUnitAlreadyExists
 	}
 	return nil
+}
+func (pg *ProductSizeUnitRules) FindSizeUnitRulesByCategoryID(
+	ctx context.Context,
+	filter repository.ProductSizeUnitRulesFilter,
+) ([]repository.ProductSizeUnitRulesData, error) {
+	rows, err := pg.db.Query(
+		ctx,
+		findSizeUnitRulesByCategoryIDSQL,
+		filter.CategoryID,
+		filter.Status,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rules []repository.ProductSizeUnitRulesData
+	for rows.Next() {
+		var rule repository.ProductSizeUnitRulesData
+		if err := rows.Scan(
+			&rule.RuleID,
+			&rule.ProductCategoryID,
+			&rule.SizeUnitID,
+			&rule.IsDefault,
+			&rule.IsActive,
+			&rule.SizeUnitCode,
+			&rule.SizeUnitName,
+			&rule.SizeUnitType,
+		); err != nil {
+			return nil, err
+		}
+		rules = append(rules, rule)
+	}
+	return rules, nil
 }

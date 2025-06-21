@@ -21,6 +21,12 @@ type ProductSizeUnitRulesData struct {
 	UpdatedBy         string
 	DeletedAt         sql.NullTime
 }
+
+type ProductSizeUnitRulesFilter struct {
+	CategoryID string
+	Status     string
+}
+
 type ProductSizeUnitRules interface {
 	InsertTransaction(
 		ctx context.Context,
@@ -30,4 +36,8 @@ type ProductSizeUnitRules interface {
 		ctx context.Context,
 		data *ProductSizeUnitRulesData,
 	) error
+	FindSizeUnitRulesByCategoryID(
+		ctx context.Context,
+		filter ProductSizeUnitRulesFilter,
+	) ([]ProductSizeUnitRulesData, error)
 }

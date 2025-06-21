@@ -104,7 +104,7 @@ const (
 				WHEN $2 = 'FALSE' THEN
 					pcpr.is_active = false
 				ELSE
-					pcpr.is_active = true
+					true
 			END
 		)
 	`

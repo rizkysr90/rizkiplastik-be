@@ -1,7 +1,6 @@
 package model
 
 type SizeUnit struct {
-	SizeUnitID   string `json:"size_unit_id"`
 	SizeUnitName string `json:"size_unit_name"`
 	SizeUnitCode string `json:"size_unit_code"`
 	SizeUnitType string `json:"size_unit_type"`
