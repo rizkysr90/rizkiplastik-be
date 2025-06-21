@@ -204,7 +204,7 @@ func (r *ProductCategoryRules) checkExistingRule(
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}
-	if ruleID != "" {
+	if ruleID != "" && data.RuleID != ruleID {
 		return ErrRuleAlreadyExists
 	}
 	return nil

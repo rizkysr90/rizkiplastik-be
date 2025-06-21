@@ -6,6 +6,7 @@ import (
 
 	"github.com/rizkysr90/rizkiplastik-be/internal/common"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/product_category_rules/model"
+	"github.com/rizkysr90/rizkiplastik-be/internal/handler/product_category_rules/repository"
 	"github.com/rizkysr90/rizkiplastik-be/internal/util/httperror"
 )
 
@@ -54,6 +55,16 @@ func (s *ProductCategoryRules) UpdateRules(
 	input.sanitize()
 	if err := input.validate(ctx); err != nil {
 		return err
+	}
+	updatedData := &repository.ProductCategoryRulesData{
+		RuleID:          input.RuleID,
+		PackagingTypeID: input.PackagingTypeID,
+		CategoryID:      input.ProductCategoryID,
+		IsDefault:       input.IsDefault,
+		UpdatedBy:       "SYSTEM",
+	}
+	if err := s.ProductCategoryRules.UpdateTransaction(ctx, updatedData); err != nil {
+		return handleRepositoryError(ctx, err)
 	}
 	return nil
 }

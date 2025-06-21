@@ -21,9 +21,10 @@ func NewHandler(productCategoryRules repository.ProductCategoryRules) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
-	endpoint := router.Group("/api/v1/categories/:product_category_id/packaging-rules")
+	endpoint := router.Group("/api/v1/categories-rules/:product_category_id/packaging-rules")
 
 	endpoint.POST("/", h.PostPackagingRules)
+	endpoint.PUT("/:rule_id", h.PutPackagingRules)
 }
 
 func (h *Handler) PostPackagingRules(c *gin.Context) {
@@ -39,4 +40,21 @@ func (h *Handler) PostPackagingRules(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{})
+}
+
+func (h *Handler) PutPackagingRules(c *gin.Context) {
+	productCategoryID := c.Param("product_category_id")
+	ruleID := c.Param("rule_id")
+	var request model.UpdateRulesRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		httperror.NewBadRequest(c, httperror.WithMessage(err.Error()))
+		return
+	}
+	request.ProductCategoryID = productCategoryID
+	request.RuleID = ruleID
+	if err := h.service.UpdateRules(c, &request); err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
 }
