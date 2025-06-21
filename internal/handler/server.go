@@ -14,6 +14,7 @@ import (
 	packagingtypesPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/packagingtypes/repository/pg"
 	productcategoryrules "github.com/rizkysr90/rizkiplastik-be/internal/handler/product_category_rules"
 	productCategoryRulesPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/product_category_rules/repository/pg"
+	productsizeunitrules "github.com/rizkysr90/rizkiplastik-be/internal/handler/product_sizeunit_rules"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/products"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/sizeunits"
 	sizeunitsPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/sizeunits/repository/pg"
@@ -124,4 +125,11 @@ func (s *Server) registerRoutes() {
 	productCategoryRulesRepo := productCategoryRulesPg.NewProductCategoryRules(s.db)
 	productCategoryRulesHandler := productcategoryrules.NewHandler(productCategoryRulesRepo)
 	productCategoryRulesHandler.RegisterRoutes(s.router)
+
+	// Product size unit rules routes
+	productCategoryRepoV2 := pg.NewCategory(s.db)
+	sizeUnitRepoV2 := pg.NewSizeUnit(s.db)
+	productSizeUnitRulesRepo := pg.NewProductSizeUnitRules(s.db, productCategoryRepoV2, sizeUnitRepoV2)
+	productSizeUnitRulesHandler := productsizeunitrules.NewHandler(productSizeUnitRulesRepo)
+	productSizeUnitRulesHandler.RegisterRoutes(s.router)
 }

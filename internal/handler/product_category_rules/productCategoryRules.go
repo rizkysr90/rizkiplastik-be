@@ -34,7 +34,9 @@ func (h *Handler) PostPackagingRules(c *gin.Context) {
 	productCategoryID := c.Param("product_category_id")
 	var request model.CreateRulesRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		httperror.NewBadRequest(c, httperror.WithMessage(err.Error()))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
 		return
 	}
 	request.ProductCategoryID = productCategoryID

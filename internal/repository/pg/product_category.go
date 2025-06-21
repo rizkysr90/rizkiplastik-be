@@ -11,12 +11,16 @@ import (
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository"
 )
 
-type Category struct {
+var (
+	ErrProductCategoryNotFound = errors.New("product category not found")
+)
+
+type ProductCategory struct {
 	db *pgxpool.Pool
 }
 
-func NewCategory(db *pgxpool.Pool) *Category {
-	return &Category{db: db}
+func NewCategory(db *pgxpool.Pool) *ProductCategory {
+	return &ProductCategory{db: db}
 }
 
 const (
@@ -80,9 +84,15 @@ const (
 		FROM product_categories
 		WHERE id = $1
 	`
+	checkProductCategoryIDSQL = `
+		SELECT 
+			id
+		FROM product_categories
+		WHERE id = $1 and is_active = true
+	`
 )
 
-func (c *Category) InsertTransaction(
+func (c *ProductCategory) InsertTransaction(
 	ctx context.Context, data *repository.CategoryData) error {
 	var description interface{}
 	description = nil
@@ -127,7 +137,7 @@ func (c *Category) InsertTransaction(
 	return nil
 }
 
-func (c *Category) Update(ctx context.Context, data *repository.CategoryData) error {
+func (c *ProductCategory) Update(ctx context.Context, data *repository.CategoryData) error {
 	var description interface{} = nil
 	if data.Description != "" {
 		description = data.Description
@@ -149,7 +159,7 @@ func (c *Category) Update(ctx context.Context, data *repository.CategoryData) er
 	}
 	return nil
 }
-func (c *Category) GetList(
+func (c *ProductCategory) GetList(
 	ctx context.Context, filter *repository.CategoryDataFilter) (
 	[]repository.CategoryData, int, error) {
 	rows, err := c.db.Query(ctx, findListCategoryQuery,
@@ -186,7 +196,7 @@ func (c *Category) GetList(
 	}
 	return categories, totalCount, nil
 }
-func (c *Category) GetByID(ctx context.Context, categoryID string) (
+func (c *ProductCategory) GetByID(ctx context.Context, categoryID string) (
 	*repository.CategoryData, error) {
 	row := c.db.QueryRow(ctx, findByCategoryIDQuery, categoryID)
 	var category repository.CategoryData
@@ -206,4 +216,24 @@ func (c *Category) GetByID(ctx context.Context, categoryID string) (
 		category.Description = nullDescription.String
 	}
 	return &category, nil
+}
+
+func (pg *ProductCategory) CheckCategoryID(
+	ctx context.Context,
+	tx pgx.Tx,
+	inputProductCategoryID string,
+) error {
+	var productCategoryID string
+	err := tx.QueryRow(
+		ctx,
+		checkProductCategoryIDSQL,
+		inputProductCategoryID,
+	).Scan(&productCategoryID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrProductCategoryNotFound
+		}
+		return err
+	}
+	return nil
 }
