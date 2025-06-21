@@ -25,6 +25,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 
 	endpoint.POST("/", h.PostPackagingRules)
 	endpoint.PUT("/:rule_id", h.PutPackagingRules)
+	endpoint.GET("/", h.GetPackagingRules)
 }
 
 func (h *Handler) PostPackagingRules(c *gin.Context) {
@@ -57,4 +58,18 @@ func (h *Handler) PutPackagingRules(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (h *Handler) GetPackagingRules(c *gin.Context) {
+	productCategoryID := c.Param("product_category_id")
+	status := c.Query("status")
+	var request model.GetListRulesRequest
+	request.ProductCategoryID = productCategoryID
+	request.Status = status
+	response, err := h.service.GetRules(c, &request)
+	if err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
 }

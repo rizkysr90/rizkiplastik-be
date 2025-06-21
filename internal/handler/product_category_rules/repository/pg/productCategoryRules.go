@@ -84,6 +84,30 @@ const (
 		AND is_active = true
 		AND category_id = $5
 	`
+	findRuleByCategoryID = `
+		SELECT 
+			pcpr.rule_id,
+			pcpr.category_id,
+			pcpr.packaging_type_id,
+			pcpr.is_default,
+			pcpr.is_active,
+			pt.code,
+			pt.name
+		FROM product_categories_packaging_rules pcpr
+		JOIN packaging_types pt
+			ON pt.id = pcpr.packaging_type_id
+		WHERE pcpr.category_id = $1
+		AND (
+			CASE
+				WHEN $2 = 'TRUE' THEN
+					pcpr.is_active = true
+				WHEN $2 = 'FALSE' THEN
+					pcpr.is_active = false
+				ELSE
+					pcpr.is_active = true
+			END
+		)
+	`
 )
 
 func (r *ProductCategoryRules) InsertTransaction(
@@ -246,4 +270,37 @@ func (r *ProductCategoryRules) checkPackagingTypeID(
 		return err
 	}
 	return nil
+}
+func (r *ProductCategoryRules) FindRuleByCategoryID(
+	ctx context.Context,
+	filter repository.ProductCategoryRulesFilter) (
+	[]repository.ProductCategoryRulesData, error) {
+	rows, err := r.db.Query(
+		ctx,
+		findRuleByCategoryID,
+		filter.CategoryID,
+		filter.Status,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rules []repository.ProductCategoryRulesData
+	for rows.Next() {
+		var rule repository.ProductCategoryRulesData
+		if err := rows.Scan(
+			&rule.RuleID,
+			&rule.CategoryID,
+			&rule.PackagingTypeID,
+			&rule.IsDefault,
+			&rule.IsActive,
+			&rule.PackagingCode,
+			&rule.PackagingName,
+		); err != nil {
+			return nil, err
+		}
+		rules = append(rules, rule)
+	}
+	return rules, nil
 }

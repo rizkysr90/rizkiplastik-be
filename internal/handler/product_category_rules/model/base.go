@@ -11,4 +11,5 @@ type Rules struct {
 	PackagingTypeID   string        `json:"packaging_type_id"`
 	PackagingType     PackagingType `json:"packaging_type"`
 	IsDefault         bool          `json:"is_default"`
+	IsActive          bool          `json:"is_active"`
 }

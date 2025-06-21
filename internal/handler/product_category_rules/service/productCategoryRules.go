@@ -17,6 +17,7 @@ const (
 	fieldPackagingTypeID   = "packaging_type_id"
 	fieldProductCategoryID = "product_category_id"
 	fieldRuleID            = "rule_id"
+	fieldStatus            = "status"
 )
 
 func NewProductCategoryRules(
