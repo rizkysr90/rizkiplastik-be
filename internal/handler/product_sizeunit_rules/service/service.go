@@ -14,6 +14,7 @@ const (
 	fieldProductCategoryID = "product_category_id"
 	fieldSizeUnitID        = "size_unit_id"
 	fieldIsDefault         = "is_default"
+	fieldRuleID            = "rule_id"
 )
 
 type ProductSizeUnitRulesService struct {

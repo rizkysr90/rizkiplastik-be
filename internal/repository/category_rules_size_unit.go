@@ -26,4 +26,8 @@ type ProductSizeUnitRules interface {
 		ctx context.Context,
 		data *ProductSizeUnitRulesData,
 	) error
+	UpdateTransaction(
+		ctx context.Context,
+		data *ProductSizeUnitRulesData,
+	) error
 }

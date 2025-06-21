@@ -43,6 +43,17 @@ const (
 		FROM product_categories_size_unit_rules
 		WHERE category_id = $1 AND size_unit_id = $2
 	`
+	updateRuleSizeUnitSQL = `
+		UPDATE product_categories_size_unit_rules
+		SET
+			size_unit_id = $2,
+			is_default = $3,
+			updated_at = NOW(),
+			updated_by = $4
+		WHERE rule_id = $1
+		AND is_active = true
+		AND category_id = $5
+	`
 )
 
 type ProductSizeUnitRules struct {
@@ -104,7 +115,54 @@ func (pg *ProductSizeUnitRules) InsertTransaction(
 	}
 	return nil
 }
-
+func (pg *ProductSizeUnitRules) UpdateTransaction(
+	ctx context.Context,
+	data *repository.ProductSizeUnitRulesData,
+) error {
+	tx, err := pg.db.BeginTx(ctx, pgx.TxOptions{
+		IsoLevel: pgx.ReadCommitted,
+	})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	// Validate category id
+	if err := pg.productCategory.CheckCategoryID(ctx, tx, data.ProductCategoryID); err != nil {
+		return err
+	}
+	// Validate size unit id
+	if err := pg.sizeUnit.checkSizeUnitID(ctx, tx, data.SizeUnitID); err != nil {
+		return err
+	}
+	// Validate existing rule
+	if err := pg.checkExistingRule(ctx, tx, data); err != nil {
+		return err
+	}
+	// Update data
+	_, err = tx.Exec(
+		ctx,
+		updateRuleSizeUnitSQL,
+		data.RuleID,
+		data.SizeUnitID,
+		data.IsDefault,
+		data.UpdatedBy,
+		data.ProductCategoryID,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == constants.ErrCodePostgreUniqueViolation {
+				return ErrUniqueViolation
+			}
+		}
+		return err
+	}
+	// Commit transaction
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
+}
 func (r *ProductSizeUnitRules) checkExistingRule(
 	ctx context.Context,
 	tx pgx.Tx,
