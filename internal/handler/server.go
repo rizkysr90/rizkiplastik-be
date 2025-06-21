@@ -12,12 +12,15 @@ import (
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/onlinetransactions"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/packagingtypes"
 	packagingtypesPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/packagingtypes/repository/pg"
+	productcategoryrules "github.com/rizkysr90/rizkiplastik-be/internal/handler/product_category_rules"
+	productCategoryRulesPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/product_category_rules/repository/pg"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/products"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/sizeunits"
 	sizeunitsPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/sizeunits/repository/pg"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/summary"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/variantypes"
 	variantypesPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/variantypes/repository/pg"
+
 	"github.com/rizkysr90/rizkiplastik-be/internal/middleware"
 	"github.com/rizkysr90/rizkiplastik-be/internal/repository/pg"
 )
@@ -116,4 +119,9 @@ func (s *Server) registerRoutes() {
 	variantTypeRepo := variantypesPg.NewVarianTypes(s.db)
 	variantTypeHandler := variantypes.NewHandler(variantTypeRepo)
 	variantTypeHandler.RegisterRoutes(s.router)
+
+	// Product category rules routes
+	productCategoryRulesRepo := productCategoryRulesPg.NewProductCategoryRules(s.db)
+	productCategoryRulesHandler := productcategoryrules.NewHandler(productCategoryRulesRepo)
+	productCategoryRulesHandler.RegisterRoutes(s.router)
 }

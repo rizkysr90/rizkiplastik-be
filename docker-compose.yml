@@ -31,7 +31,7 @@ services:
       postgres:
         condition: service_started
     environment:
-      - DATABASE_URL=postgres://root:root@postgres:5432/rizkiplastiktest?sslmode=disable
+      - DATABASE_URL=postgres://root:root@postgres:5432/rizkiplastik?sslmode=disable
       - DBMATE_MIGRATIONS_DIR=/app/resources/pgsql/migrations
       - DBMATE_NO_DUMP_SCHEMA=true
       - DBMATE_VERBOSE=true
