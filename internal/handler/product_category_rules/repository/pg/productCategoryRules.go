@@ -104,7 +104,7 @@ const (
 				WHEN $2 = 'FALSE' THEN
 					pcpr.is_active = false
 				ELSE
-					pcpr.is_active = true
+					true
 			END
 		)
 	`
@@ -132,7 +132,7 @@ func (r *ProductCategoryRules) InsertTransaction(
 	}
 	defer tx.Rollback(ctx)
 	// Validate category id
-	if err := r.checkCategoryID(ctx, tx, data.CategoryID); err != nil {
+	if err := r.CheckCategoryID(ctx, tx, data.CategoryID); err != nil {
 		return err
 	}
 	// Validate packaging type id
@@ -181,7 +181,7 @@ func (r *ProductCategoryRules) UpdateTransaction(
 	}
 	defer tx.Rollback(ctx)
 	// Validate category id
-	if err := r.checkCategoryID(ctx, tx, data.CategoryID); err != nil {
+	if err := r.CheckCategoryID(ctx, tx, data.CategoryID); err != nil {
 		return err
 	}
 	// Validate packaging type id
@@ -240,7 +240,7 @@ func (r *ProductCategoryRules) checkExistingRule(
 	}
 	return nil
 }
-func (r *ProductCategoryRules) checkCategoryID(
+func (r *ProductCategoryRules) CheckCategoryID(
 	ctx context.Context,
 	tx pgx.Tx,
 	categoryID string,
