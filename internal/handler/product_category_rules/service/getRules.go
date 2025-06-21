@@ -60,7 +60,7 @@ func (s *ProductCategoryRules) GetRules(
 	}
 	rules, err := s.ProductCategoryRules.FindRuleByCategoryID(ctx, filter)
 	if err != nil {
-		return nil, err
+		return nil, handleRepositoryError(ctx, err)
 	}
 	response := model.GetListRulesResponse{
 		Data: []model.Rules{},

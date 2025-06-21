@@ -40,4 +40,9 @@ type ProductCategoryRules interface {
 		ctx context.Context,
 		filter ProductCategoryRulesFilter,
 	) ([]ProductCategoryRulesData, error)
+	UpdateStatusRule(
+		ctx context.Context,
+		ruleID string,
+		isActive bool,
+	) error
 }

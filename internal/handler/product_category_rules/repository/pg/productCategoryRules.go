@@ -108,6 +108,13 @@ const (
 			END
 		)
 	`
+	updateStatusRuleSQL = `
+		UPDATE 
+			product_categories_packaging_rules
+		SET
+			is_active = $2
+		WHERE rule_id = $1
+	`
 )
 
 func (r *ProductCategoryRules) InsertTransaction(
@@ -303,4 +310,24 @@ func (r *ProductCategoryRules) FindRuleByCategoryID(
 		rules = append(rules, rule)
 	}
 	return rules, nil
+}
+
+func (r *ProductCategoryRules) UpdateStatusRule(
+	ctx context.Context,
+	ruleID string,
+	isActive bool,
+) error {
+	row, err := r.db.Exec(
+		ctx,
+		updateStatusRuleSQL,
+		ruleID,
+		isActive,
+	)
+	if err != nil {
+		return err
+	}
+	if row.RowsAffected() == 0 {
+		return ErrRuleNotFound
+	}
+	return nil
 }

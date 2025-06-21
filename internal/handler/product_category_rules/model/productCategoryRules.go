@@ -19,9 +19,8 @@ type GetListRulesRequest struct {
 }
 
 type UpdateRulesStatusRequest struct {
-	ProductCategoryID string `json:"product_category_id"`
-	RuleID            string `json:"rule_id"`
-	Status            string `json:"status"`
+	RuleID string `json:"rule_id"`
+	Status bool   `json:"status"`
 }
 
 type GetListRulesResponse struct {

@@ -21,11 +21,13 @@ func NewHandler(productCategoryRules repository.ProductCategoryRules) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
-	endpoint := router.Group("/api/v1/categories-rules/:product_category_id/packaging-rules")
+	endpoint := router.Group("/api/v1/categories-rules")
 
-	endpoint.POST("/", h.PostPackagingRules)
-	endpoint.PUT("/:rule_id", h.PutPackagingRules)
-	endpoint.GET("/", h.GetPackagingRules)
+	endpoint.POST("/:product_category_id/packaging-rules", h.PostPackagingRules)
+	endpoint.PUT("/:product_category_id/packaging-rules/:rule_id", h.PutPackagingRules)
+	endpoint.GET("/:product_category_id/packaging-rules", h.GetPackagingRules)
+	endpoint.PATCH("/packaging-rules/:rule_id/status", h.PutPackagingRulesStatus)
+
 }
 
 func (h *Handler) PostPackagingRules(c *gin.Context) {
@@ -72,4 +74,18 @@ func (h *Handler) GetPackagingRules(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, response)
+}
+func (h *Handler) PutPackagingRulesStatus(c *gin.Context) {
+	ruleID := c.Param("rule_id")
+	var request model.UpdateRulesStatusRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		httperror.NewBadRequest(c, httperror.WithMessage(err.Error()))
+		return
+	}
+	request.RuleID = ruleID
+	if err := h.service.UpdateStatusRules(c, &request); err != nil {
+		util.HandleServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
 }
