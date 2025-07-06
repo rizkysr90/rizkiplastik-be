@@ -87,6 +87,24 @@ const (
 			updated_by = $3
 		WHERE rule_id = $1
 	`
+	findSizeUnitRuleByCategoryIDAndRuleIDSQL = `
+		SELECT
+			p.category_id,
+			p.size_unit_id,
+			s.code,
+			pc.code
+		FROM product_categories_size_unit_rules p
+		JOIN size_units s
+			ON p.size_units.id = s.id
+		JOIN product_categories pc
+			ON pc.id = p.category_id
+		WHERE 
+			p.category_id = $1 AND 
+			p.size_unit_id = ANY($2::uuid[]) AND 
+			p.is_active = true AND
+			s.is_active = true AND
+			pc.is_active = true
+	`
 )
 
 type ProductSizeUnitRules struct {
@@ -270,4 +288,38 @@ func (pg *ProductSizeUnitRules) UpdateStatusRule(
 		return ErrRuleSizeUnitNotFound
 	}
 	return nil
+}
+func (pg *ProductSizeUnitRules) FindByCategoryIDAndRuleID(
+	ctx context.Context,
+	tx pgx.Tx,
+	categoryID string, sizeUnitID []string,
+) ([]repository.ProductSizeUnitRulesData, error) {
+	var rules []repository.ProductSizeUnitRulesData
+	rows, err := tx.Query(
+		ctx,
+		findSizeUnitRuleByCategoryIDAndRuleIDSQL,
+		categoryID,
+		sizeUnitID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var rule repository.ProductSizeUnitRulesData
+		err := rows.Scan(
+			&rule.ProductCategoryID,
+			&rule.SizeUnitID,
+			&rule.SizeUnitCode,
+			&rule.ProductCategoryCode,
+		)
+		if err != nil {
+			return nil, err
+		}
+		rules = append(rules, rule)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return rules, nil
 }

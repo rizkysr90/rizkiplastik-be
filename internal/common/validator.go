@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 func ValidateMaxLengthStr(str string, maxLength int) error {
@@ -54,6 +55,19 @@ func ValidateOnlyAllowedUppercaseLetter(str, fieldName string) error {
 		if char < 'A' || char > 'Z' {
 			return errors.New(fieldName + " must contain only allowed uppercase letter (A-Z)")
 		}
+	}
+	return nil
+}
+
+func ValidateStringRequired(str, fieldName string) error {
+	if str == "" {
+		return errors.New(fieldName + " is required")
+	}
+	return nil
+}
+func ValidateDecimalRequired(number decimal.Decimal, fieldName string) error {
+	if number.IsZero() {
+		return errors.New(fieldName + " is required")
 	}
 	return nil
 }

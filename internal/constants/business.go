@@ -1,6 +1,7 @@
 package constants
 
 const (
-	IsActiveTrue  = "TRUE"
-	IsActiveFalse = "FALSE"
+	IsActiveTrue             = "TRUE"
+	IsActiveFalse            = "FALSE"
+	MaxLengthProductBaseName = 100
 )
