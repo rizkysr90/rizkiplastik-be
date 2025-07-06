@@ -1,4 +1,4 @@
-package products
+package products_old
 
 // CreateProductRequest represents data needed to create a product
 type CreateProductRequest struct {
