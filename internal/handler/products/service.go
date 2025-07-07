@@ -12,10 +12,12 @@ type ProductService interface {
 }
 
 type Service struct {
-	db                     *pgxpool.Pool
-	productRepository      repository.ProductRepository
-	categorySizeUnitRules  repository.ProductSizeUnitRules
-	categoryPackagingRules repository.CategoryPackagingRules
+	db                       *pgxpool.Pool
+	productRepository        repository.ProductRepository
+	categorySizeUnitRules    repository.ProductSizeUnitRules
+	categoryPackagingRules   repository.CategoryPackagingRules
+	productVariantRepository repository.ProductVariant
+	repackRecipeRepository   repository.RepackRecipe
 }
 
 func NewService(
@@ -23,11 +25,15 @@ func NewService(
 	productRepository repository.ProductRepository,
 	categorySizeUnitRules repository.ProductSizeUnitRules,
 	categoryPackagingRules repository.CategoryPackagingRules,
+	productVariantRepository repository.ProductVariant,
+	repackRecipeRepository repository.RepackRecipe,
 ) ProductService {
 	return &Service{
-		db:                     db,
-		productRepository:      productRepository,
-		categorySizeUnitRules:  categorySizeUnitRules,
-		categoryPackagingRules: categoryPackagingRules,
+		db:                       db,
+		productRepository:        productRepository,
+		categorySizeUnitRules:    categorySizeUnitRules,
+		categoryPackagingRules:   categoryPackagingRules,
+		productVariantRepository: productVariantRepository,
+		repackRecipeRepository:   repackRecipeRepository,
 	}
 }

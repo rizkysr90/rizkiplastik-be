@@ -1,6 +1,6 @@
 package products
 
 type CreateProductRequest struct {
-	Product Product
-	Variant []VariantObject
+	Product  Product         `json:"product"`
+	Variants []VariantObject `json:"variants"`
 }

@@ -95,7 +95,7 @@ const (
 			pc.code
 		FROM product_categories_size_unit_rules p
 		JOIN size_units s
-			ON p.size_units.id = s.id
+			ON p.size_unit_id = s.id
 		JOIN product_categories pc
 			ON pc.id = p.category_id
 		WHERE 

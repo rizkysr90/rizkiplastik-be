@@ -71,3 +71,10 @@ func ValidateDecimalRequired(number decimal.Decimal, fieldName string) error {
 	}
 	return nil
 }
+
+func ValidateFloatRequired(number float32, fieldName string) error {
+	if number == 0 {
+		return errors.New(fieldName + " is required")
+	}
+	return nil
+}
