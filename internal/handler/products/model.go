@@ -1,40 +1,27 @@
 package products
 
-// CreateProductRequest represents data needed to create a product
-type CreateProductRequest struct {
-	Name                        string   `json:"name" binding:"required,max=50"`
-	CostPrice                   float32  `json:"cost_price" binding:"required"`
-	GrossProfitPercentage       float32  `json:"gross_profit_percentage" binding:"required"`
-	VarianGrossProfitPercentage *float32 `json:"varian_gross_profit_percentage"`
-	ShopeeCategory              string   `json:"shopee_category" binding:"required,oneof=A B C D E"`
-	ShopeeVarianName            string   `json:"shopee_varian_name" binding:"max=100"`
-	ShopeeName                  string   `json:"shopee_name" binding:"required,max=100"`
-}
+import (
+	"github.com/shopspring/decimal"
+)
 
-// UpdateProductRequest represents data needed to update a product
-type UpdateProductRequest struct {
-	Name                        string   `json:"name" binding:"required,max=50"`
-	GrossProfitPercentage       float32  `json:"gross_profit_percentage" binding:"required"`
-	VarianGrossProfitPercentage *float32 `json:"varian_gross_profit_percentage"`
-	ShopeeCategory              string   `json:"shopee_category" binding:"required,oneof=A B C D E"`
-	ShopeeVarianName            string   `json:"shopee_varian_name" binding:"max=100"`
-	ShopeeName                  string   `json:"shopee_name" binding:"required,max=100"`
-	CostPrice                   float32  `json:"cost_price" binding:"required"`
+/*Base Data*/
+type VariantObject struct {
+	VariantName     *string             `json:"variant_name"`
+	PackagingTypeID string              `json:"packaging_type_id"`
+	SizeValue       float32             `json:"size_value"`
+	SizeUnitID      string              `json:"size_unit_id"`
+	CostPrice       *decimal.Decimal    `json:"cost_price"`
+	SellPrice       decimal.Decimal     `json:"sell_price"`
+	RepackRecipe    *RepackRecipeObject `json:"repack_recipe"`
 }
-
-// PaginationResponse represents standard pagination metadata
-type PaginationResponse struct {
-	PageSize   int `json:"page_size"`
-	PageNumber int `json:"page_number"`
+type RepackRecipeObject struct {
+	ParentVariantID   string          `json:"parent_variant_id"`
+	QuantityRatio     float32         `json:"quantity_ratio"`
+	RepackCostPerUnit decimal.Decimal `json:"repack_cost_per_unit"`
+	RepackTimeMinutes int             `json:"repack_time_minutes"`
 }
-
-// GetProductsResponse represents the response for the get products endpoint
-type GetProductsResponse struct {
-	Metadata PaginationResponse `json:"metadata"`
-	Data     []Product          `json:"data"`
-}
-
-// GetProductResponse represents the response for the get product by ID endpoint
-type GetProductResponse struct {
-	Data Product `json:"data"`
+type Product struct {
+	BaseName    string `json:"base_name"`
+	ProductType string `json:"product_type"`
+	CategoryID  string `json:"category_id"`
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/rizkysr90/rizkiplastik-be/internal/config"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/authentication"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/category"
-	"github.com/rizkysr90/rizkiplastik-be/internal/handler/onlinetransactions"
 	"github.com/rizkysr90/rizkiplastik-be/internal/handler/packagingtypes"
 	packagingtypesPg "github.com/rizkysr90/rizkiplastik-be/internal/handler/packagingtypes/repository/pg"
 	productcategoryrules "github.com/rizkysr90/rizkiplastik-be/internal/handler/product_category_rules"
@@ -89,15 +88,6 @@ func (s *Server) registerRoutes() {
 	// Initialize auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(s.db, s.cfg)
 
-	// Product routes
-	productHandler := products.NewProductHandler(s.db)
-	productHandler.RegisterRoutes(s.router, authMiddleware)
-
-	// Online transaction routes
-
-	onlineTransactionHandler := onlinetransactions.NewOnlineTransactions(s.db)
-	onlineTransactionHandler.RegisterRoutes(s.router, authMiddleware)
-
 	// Summary routes
 	summaryHandler := summary.NewSummaryHandler(s.db)
 	summaryHandler.RegisterRoutes(s.router, authMiddleware)
@@ -134,4 +124,20 @@ func (s *Server) registerRoutes() {
 	productSizeUnitRulesRepo := pg.NewProductSizeUnitRules(s.db, productCategoryRepoV2, sizeUnitRepoV2)
 	productSizeUnitRulesHandler := productsizeunitrules.NewHandler(productSizeUnitRulesRepo)
 	productSizeUnitRulesHandler.RegisterRoutes(s.router)
+
+	// Product routes
+	productRepo := pg.NewProduct(s.db)
+	productVariantRepo := pg.NewProductVariant(s.db)
+	repackRecipeRepo := pg.NewRepackRecipe(s.db)
+	categoryPackagingRulesRepo := pg.NewCategoryPackagingRules(s.db)
+	productService := products.NewService(
+		s.db,
+		productRepo,
+		productSizeUnitRulesRepo,
+		categoryPackagingRulesRepo,
+		productVariantRepo,
+		repackRecipeRepo,
+	)
+	productHandler := products.NewHandler(productService)
+	productHandler.RegisterRoutes(s.router)
 }
