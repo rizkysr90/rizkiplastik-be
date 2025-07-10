@@ -63,6 +63,18 @@ func (req *requestCreateProduct) validateField() []httperror.FieldValidation {
 	fieldValidation = append(fieldValidation,
 		validateFieldProduct(&req.Product)...)
 	// Validate variant
+	if req.Product.ProductType == string(repository.ProductTypeSingle) && len(req.Variants) > 1 {
+		fieldValidation = append(fieldValidation, httperror.FieldValidation{
+			Field:   "variants",
+			Message: "variants is not allowed for single product",
+		})
+	}
+	if len(req.Variants) == 0 {
+		fieldValidation = append(fieldValidation, httperror.FieldValidation{
+			Field:   "variants",
+			Message: "variants is required",
+		})
+	}
 	for _, variant := range req.Variants {
 		if _, exists := uniqueSizeUnitID[variant.SizeUnitID]; !exists {
 			req.uniqueSizeUnitArray = append(
@@ -90,6 +102,12 @@ func (req *requestCreateProduct) validateField() []httperror.FieldValidation {
 			fieldValidation = append(fieldValidation, httperror.FieldValidation{
 				Field:   "repack_recipe",
 				Message: "repack_recipe is required for repack product",
+			})
+		}
+		if req.Product.ProductType == string(repository.ProductTypeSingle) && variant.VariantName != nil {
+			fieldValidation = append(fieldValidation, httperror.FieldValidation{
+				Field:   "variant_name",
+				Message: "variant_name is not allowed for single product",
 			})
 		}
 		if variant.RepackRecipe != nil {
@@ -145,6 +163,7 @@ func validateFieldProduct(product *Product) []httperror.FieldValidation {
 		[]string{
 			string(repository.ProductTypeRepack),
 			string(repository.ProductTypeVariant),
+			string(repository.ProductTypeSingle),
 		},
 	); err != nil {
 		fieldValidation = append(fieldValidation, httperror.FieldValidation{
@@ -382,7 +401,7 @@ func (req *requestCreateProduct) setInsertedData(
 			tempVariant.RepackRecipe = &repository.RepackRecipeData{
 				ID:                uuid.NewString(),
 				ParentVariantID:   variant.RepackRecipe.ParentVariantID,
-				ChildVariantID:    tempVariant.ProductID,
+				ChildVariantID:    tempVariant.ID,
 				QuantityRatio:     variant.RepackRecipe.QuantityRatio,
 				RepackCostPerUnit: variant.RepackRecipe.RepackCostPerUnit,
 				RepackTimeMinutes: variant.RepackRecipe.RepackTimeMinutes,

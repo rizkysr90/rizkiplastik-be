@@ -11,6 +11,7 @@ type ProductType string
 const (
 	ProductTypeRepack  ProductType = "REPACK"
 	ProductTypeVariant ProductType = "VARIANT"
+	ProductTypeSingle  ProductType = "SINGLE"
 )
 
 type ProductData struct {

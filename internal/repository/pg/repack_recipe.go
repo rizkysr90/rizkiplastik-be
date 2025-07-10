@@ -18,7 +18,7 @@ func NewRepackRecipe(db *pgxpool.Pool) *RepackRecipe {
 
 const (
 	insertRepackRecipeQuery = `
-		INSERT INTO repack_recipes (
+		INSERT INTO product_repack_recipes (
 			id,
 			parent_variant_id,
 			child_variant_id,
