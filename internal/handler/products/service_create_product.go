@@ -110,6 +110,12 @@ func (req *requestCreateProduct) validateField() []httperror.FieldValidation {
 				Message: "variant_name is not allowed for single product",
 			})
 		}
+		if req.Product.ProductType != string(repository.ProductTypeSingle) && variant.VariantName == nil {
+			fieldValidation = append(fieldValidation, httperror.FieldValidation{
+				Field:   "variant_name",
+				Message: "variant_name is required",
+			})
+		}
 		if variant.RepackRecipe != nil {
 			if _, exists := uniqueParentVariantID[variant.RepackRecipe.ParentVariantID]; !exists {
 				req.uniqueParentVariantIDArray = append(
