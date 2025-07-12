@@ -3,6 +3,7 @@ package products
 import (
 	"context"
 	"database/sql"
+	"log"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -77,9 +78,9 @@ func (s *Service) UpdateVariantProductType(ctx context.Context,
 		return httperror.NewMultiFieldValidation(ctx, productFieldValidation)
 	}
 	variantFieldValidation := []httperror.FieldValidation{}
+	uniqueSizeUnitID := make(map[string]bool)
+	uniquePackagingTypeID := make(map[string]bool)
 	for _, variant := range input.Variants {
-		uniqueSizeUnitID := make(map[string]bool)
-		uniquePackagingTypeID := make(map[string]bool)
 
 		input.sanitizeFieldVariant(&variant)
 		variantFieldValidation = append(variantFieldValidation,
@@ -87,13 +88,14 @@ func (s *Service) UpdateVariantProductType(ctx context.Context,
 		if _, exists := uniqueSizeUnitID[variant.SizeUnitID]; !exists {
 			input.uniqueSizeUnitArray = append(
 				input.uniqueSizeUnitArray, variant.SizeUnitID)
+			uniqueSizeUnitID[variant.SizeUnitID] = true
+
 		}
 		if _, exists := uniquePackagingTypeID[variant.PackagingTypeID]; !exists {
 			input.uniquePackagingTypeArray = append(
 				input.uniquePackagingTypeArray, variant.PackagingTypeID)
+			uniquePackagingTypeID[variant.PackagingTypeID] = true
 		}
-		uniqueSizeUnitID[variant.SizeUnitID] = true
-		uniquePackagingTypeID[variant.PackagingTypeID] = true
 	}
 	if len(variantFieldValidation) > 0 {
 		return httperror.NewMultiFieldValidation(ctx, variantFieldValidation)
@@ -111,7 +113,8 @@ func (s *Service) UpdateVariantProductType(ctx context.Context,
 		return err
 	}
 	for _, variant := range variantProduct {
-		if variant.Parent.ProductType != repository.ProductTypeVariant {
+		if variant.Parent.ProductType != repository.ProductTypeVariant &&
+			variant.Parent.ProductType != repository.ProductTypeRepack {
 			return httperror.NewBadRequest(ctx, httperror.WithMessage(
 				"invalid product type variant"))
 		}
@@ -119,7 +122,7 @@ func (s *Service) UpdateVariantProductType(ctx context.Context,
 	}
 	if len(variantProduct) != len(input.Variants) {
 		return httperror.NewBadRequest(ctx, httperror.WithMessage(
-			"product_id not found",
+			"mismatched variant product",
 		))
 	}
 	for _, variant := range input.Variants {
@@ -139,6 +142,8 @@ func (s *Service) UpdateVariantProductType(ctx context.Context,
 		))
 	}
 	if len(sizeUnitRule) != len(input.uniqueSizeUnitArray) {
+		log.Println("HERE len(sizeUnitRule) != len(input.uniqueSizeUnitArray)",
+			len(sizeUnitRule), len(input.uniqueSizeUnitArray))
 		return httperror.NewBadRequest(ctx, httperror.WithMessage(
 			"size_unit_rule_not_found",
 		))
