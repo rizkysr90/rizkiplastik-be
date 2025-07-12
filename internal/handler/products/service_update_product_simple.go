@@ -71,14 +71,39 @@ func (s *Service) UpdateSingleProductType(ctx context.Context, request *UpdateSi
 		// error is already handled by validateExistingVariantData
 		return err
 	}
+	// Validate product type
 	if variantProduct.Parent.ProductType != repository.ProductTypeSingle {
 		return httperror.NewBadRequest(ctx, httperror.WithMessage(
 			"product_id must have single product type",
 		))
 	}
+	// Validate size unit rule
+	sizeUnitRule, err := s.categorySizeUnitRules.FindByCategoryIDAndSizeUnitID(
+		ctx, tx, input.CategoryID, []string{input.SizeUnitID})
+	if err != nil {
+		return err
+	}
+	// validate packaging type rule
+	packagingTypeRule, err := s.categoryPackagingRules.FindByCategoryIDAndRuleID(
+		ctx, tx, input.CategoryID, []string{input.PackagingTypeID})
+	if err != nil {
+		return err
+	}
+	if len(packagingTypeRule) != 1 {
+		return httperror.NewBadRequest(ctx, httperror.WithMessage(
+			"packaging_type_rule_not_found",
+		))
+	}
+	// validate size unit rule
+	if len(sizeUnitRule) != 1 {
+		return httperror.NewBadRequest(ctx, httperror.WithMessage(
+			"size_unit_rule_not_found",
+		))
+	}
+	// Validate size unit rule
 	setBaseProductUpdatedData := &repository.ProductData{
 		ID:         input.ProductID,
-		BaseName:   input.BaseName,
+		BaseName:   strings.ToUpper(input.BaseName),
 		CategoryID: input.CategoryID,
 		UpdatedBy:  userID,
 	}
@@ -89,8 +114,8 @@ func (s *Service) UpdateSingleProductType(ctx context.Context, request *UpdateSi
 		SizeUnitID:      input.SizeUnitID,
 		SellingPrice:    input.SellPrice,
 		UpdatedBy:       userID,
-		ProductName:     input.BaseName,
-		FullName:        input.BaseName,
+		ProductName:     strings.ToUpper(input.BaseName),
+		FullName:        strings.ToUpper(input.BaseName),
 	}
 	if input.CostPrice != nil {
 		setVariantUpdatedData.CostPrice = decimal.NullDecimal{

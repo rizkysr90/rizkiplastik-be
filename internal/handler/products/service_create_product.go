@@ -173,7 +173,7 @@ func (req *requestCreateProduct) validateCategoryRules(
 	categorySizeUnitRulesRepository repository.ProductSizeUnitRules,
 ) error {
 	// Validate size unit rule
-	sizeUnitRule, err := categorySizeUnitRulesRepository.FindByCategoryIDAndRuleID(
+	sizeUnitRule, err := categorySizeUnitRulesRepository.FindByCategoryIDAndSizeUnitID(
 		ctx, tx, req.Product.CategoryID, req.uniqueSizeUnitArray)
 	if err != nil {
 		return httperror.NewInternalServer(ctx, httperror.WithMessage(

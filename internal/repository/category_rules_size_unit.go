@@ -49,7 +49,7 @@ type ProductSizeUnitRules interface {
 		isActive bool,
 		userID string,
 	) error
-	FindByCategoryIDAndRuleID(
+	FindByCategoryIDAndSizeUnitID(
 		ctx context.Context,
 		tx pgx.Tx,
 		categoryID string, sizeUnitID []string,

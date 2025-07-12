@@ -17,3 +17,10 @@ type UpdateSingleProductTypeRequest struct {
 	CostPrice       *decimal.Decimal `json:"cost_price"`
 	SellPrice       decimal.Decimal  `json:"sell_price"`
 }
+
+type UpdateVariantProductTypeRequest struct {
+	ProductID  string          `json:"product_id"`
+	BaseName   string          `json:"base_name"`
+	CategoryID string          `json:"category_id"`
+	Variants   []VariantObject `json:"variants"`
+}

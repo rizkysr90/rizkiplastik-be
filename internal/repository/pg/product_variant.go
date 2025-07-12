@@ -80,8 +80,9 @@ const (
 		updated_by = $6, 
 		product_name = $7,
 		full_name = $8,
+		variant_name = $9,
 		updated_at = NOW()
-		WHERE id = $9
+		WHERE id = $10
 	`
 )
 
@@ -188,6 +189,7 @@ func (p *ProductVariant) UpdateVariantForProductTypeSingleTransaction(
 		data.UpdatedBy,
 		data.ProductName,
 		data.FullName,
+		data.VariantName,
 		data.ID,
 	)
 	if err != nil {
