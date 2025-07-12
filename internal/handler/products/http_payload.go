@@ -8,8 +8,9 @@ type CreateProductRequest struct {
 }
 
 type UpdateSingleProductTypeRequest struct {
-	ProductID string `json:"product_id"`
-	*Product
+	ProductID       string           `json:"product_id"`
+	BaseName        string           `json:"base_name"`
+	CategoryID      string           `json:"category_id"`
 	PackagingTypeID string           `json:"packaging_type_id"`
 	SizeValue       float32          `json:"size_value"`
 	SizeUnitID      string           `json:"size_unit_id"`

@@ -18,8 +18,7 @@ type requestUpdateSingleProductType struct {
 
 func (req *requestUpdateSingleProductType) sanitize() {
 	req.PackagingTypeID = strings.TrimSpace(req.PackagingTypeID)
-	req.Product.BaseName = strings.TrimSpace(req.Product.BaseName)
-	req.Product.ProductType = strings.TrimSpace(req.Product.ProductType)
+	req.BaseName = strings.TrimSpace(req.BaseName)
 	req.SizeUnitID = strings.TrimSpace(req.SizeUnitID)
 }
 
@@ -31,18 +30,14 @@ func (req *requestUpdateSingleProductType) validateField() []httperror.FieldVali
 			Message: err.Error(),
 		})
 	}
-	if req.ProductType != string(repository.ProductTypeSingle) {
-		fieldValidation = append(fieldValidation, httperror.FieldValidation{
-			Field:   fieldValidationFieldProductType,
-			Message: "product_type must be single",
-		})
-	}
-	convertToProduct := Product{
-		BaseName:    req.Product.BaseName,
-		ProductType: req.Product.ProductType,
-		CategoryID:  req.Product.CategoryID,
-	}
-	fieldValidation = append(fieldValidation, validateFieldProduct(&convertToProduct)...)
+	fieldValidation = append(fieldValidation, ValidateBaseName(
+		req.BaseName,
+		fieldValidationFieldBaseName)...,
+	)
+	fieldValidation = append(fieldValidation, ValidateCategoryID(
+		req.CategoryID,
+		fieldValidationFieldCategoryID)...,
+	)
 	convertToVariant := VariantObject{
 		PackagingTypeID: req.PackagingTypeID,
 		SizeValue:       req.SizeValue,
@@ -71,25 +66,31 @@ func (s *Service) UpdateSingleProductType(ctx context.Context, request *UpdateSi
 		return err
 	}
 	defer tx.Rollback(ctx)
-	variantID, err := input.validateExistingVariantData(ctx, tx, s.productVariantRepository)
+	variantProduct, err := input.validateExistingVariantData(ctx, tx, s.productVariantRepository)
 	if err != nil {
 		// error is already handled by validateExistingVariantData
 		return err
 	}
+	if variantProduct.Parent.ProductType != repository.ProductTypeSingle {
+		return httperror.NewBadRequest(ctx, httperror.WithMessage(
+			"product_id must have single product type",
+		))
+	}
 	setBaseProductUpdatedData := &repository.ProductData{
+		ID:         input.ProductID,
 		BaseName:   input.BaseName,
 		CategoryID: input.CategoryID,
 		UpdatedBy:  userID,
 	}
 	setVariantUpdatedData := &repository.ProductVariantData{
-		ID:              variantID,
+		ID:              variantProduct.ID,
 		PackagingTypeID: input.PackagingTypeID,
 		SizeValue:       input.SizeValue,
 		SizeUnitID:      input.SizeUnitID,
 		SellingPrice:    input.SellPrice,
 		UpdatedBy:       userID,
-		ProductName:     input.Product.BaseName,
-		FullName:        input.Product.BaseName,
+		ProductName:     input.BaseName,
+		FullName:        input.BaseName,
 	}
 	if input.CostPrice != nil {
 		setVariantUpdatedData.CostPrice = decimal.NullDecimal{
@@ -101,19 +102,25 @@ func (s *Service) UpdateSingleProductType(ctx context.Context, request *UpdateSi
 	if err := s.productVariantRepository.UpdateVariantForProductTypeSingleTransaction(ctx, tx, setVariantUpdatedData); err != nil {
 		return err
 	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
 	return nil
 }
-func (req *requestUpdateSingleProductType) validateExistingVariantData(ctx context.Context, tx pgx.Tx, productVariantRepository repository.ProductVariant) (string, error) {
+func (req *requestUpdateSingleProductType) validateExistingVariantData(
+	ctx context.Context,
+	tx pgx.Tx,
+	productVariantRepository repository.ProductVariant) (*repository.ProductVariantData, error) {
 	variants, err := productVariantRepository.FindByProductID(
 		ctx, tx, req.ProductID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(variants) != 1 {
-		return "", httperror.NewBadRequest(ctx, httperror.WithMessage(
+		return nil, httperror.NewBadRequest(ctx, httperror.WithMessage(
 			"product_id must have exactly 1 variant : "+strconv.Itoa(len(variants)),
 		))
 	} else {
-		return variants[0].ID, nil
+		return &variants[0], nil
 	}
 }

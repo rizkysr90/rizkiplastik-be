@@ -61,11 +61,14 @@ const (
 		)`
 	findProductVariantByProductIDQuery = `
 		SELECT 
-			id
-		FROM product_variants
-		WHERE product_id = $1
-		AND is_active = true
-		AND deleted_at IS NULL
+			pv.id,
+			p.type
+		FROM product_variants pv
+		JOIN products p ON p.id = pv.product_id
+		WHERE pv.product_id = $1
+		AND pv.is_active = true
+		AND pv.deleted_at IS NULL
+		AND p.deleted_at IS NULL
 	`
 	updateVariantForProductTypeSingleQuery = `
 		UPDATE product_variants
@@ -153,8 +156,15 @@ func (p *ProductVariant) FindByProductID(
 	variants := []repository.ProductVariantData{}
 	for rows.Next() {
 		var variant repository.ProductVariantData
-		if err := rows.Scan(&variant.ID); err != nil {
+		var productType string
+		if err := rows.Scan(
+			&variant.ID,
+			&productType,
+		); err != nil {
 			return nil, err
+		}
+		variant.Parent = &repository.ProductData{
+			ProductType: repository.ProductType(productType),
 		}
 		variants = append(variants, variant)
 	}

@@ -23,6 +23,7 @@ type ProductVariantData struct {
 	CreatedBy       string
 	UpdatedBy       string
 	RepackRecipe    *RepackRecipeData
+	Parent          *ProductData
 }
 
 type ProductVariant interface {

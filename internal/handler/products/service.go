@@ -9,6 +9,7 @@ import (
 
 type ProductService interface {
 	Create(ctx context.Context, request *CreateProductRequest) error
+	UpdateSingleProductType(ctx context.Context, request *UpdateSingleProductTypeRequest) error
 }
 
 type Service struct {

@@ -9,36 +9,9 @@ import (
 
 func validateFieldProduct(product *Product) []httperror.FieldValidation {
 	fieldValidation := []httperror.FieldValidation{}
-	if err := common.ValidateStringRequired(product.BaseName, fieldValidationFieldBaseName); err != nil {
-		fieldValidation = append(fieldValidation, httperror.FieldValidation{
-			Field:   fieldValidationFieldBaseName,
-			Message: err.Error(),
-		})
-	}
-	if err := common.ValidateStringRequired(product.CategoryID, fieldValidationFieldCategoryID); err != nil {
-		fieldValidation = append(fieldValidation, httperror.FieldValidation{
-			Field:   fieldValidationFieldCategoryID,
-			Message: err.Error(),
-		})
-	}
 	if err := common.ValidateStringRequired(product.ProductType, fieldValidationFieldProductType); err != nil {
 		fieldValidation = append(fieldValidation, httperror.FieldValidation{
 			Field:   fieldValidationFieldProductType,
-			Message: err.Error(),
-		})
-	}
-	if err := common.ValidateMaxLengthStr(
-		product.BaseName,
-		constants.MaxLengthProductBaseName,
-	); err != nil {
-		fieldValidation = append(fieldValidation, httperror.FieldValidation{
-			Field:   fieldValidationFieldBaseName,
-			Message: err.Error(),
-		})
-	}
-	if err := common.ValidateUUIDFormat(product.CategoryID); err != nil {
-		fieldValidation = append(fieldValidation, httperror.FieldValidation{
-			Field:   fieldValidationFieldCategoryID,
 			Message: err.Error(),
 		})
 	}
@@ -55,6 +28,14 @@ func validateFieldProduct(product *Product) []httperror.FieldValidation {
 			Message: err.Error(),
 		})
 	}
+	fieldValidation = append(fieldValidation, ValidateBaseName(
+		product.BaseName,
+		fieldValidationFieldBaseName)...,
+	)
+	fieldValidation = append(fieldValidation, ValidateCategoryID(
+		product.CategoryID,
+		fieldValidationFieldCategoryID)...,
+	)
 	return fieldValidation
 }
 
