@@ -9,6 +9,8 @@ import (
 
 type ProductService interface {
 	Create(ctx context.Context, request *CreateProductRequest) error
+	UpdateSingleProductType(ctx context.Context, request *UpdateSingleProductTypeRequest) error
+	UpdateVariantProductType(ctx context.Context, request *UpdateVariantProductTypeRequest) error
 }
 
 type Service struct {

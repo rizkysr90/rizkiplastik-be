@@ -14,4 +14,6 @@ const (
 	fieldValidationFieldQuantityRatio     = "quantity_ratio"
 	fieldValidationFieldRepackCostPerUnit = "repack_cost_per_unit"
 	fieldValidationFieldRepackTimeMinutes = "repack_time_minutes"
+	fieldValidationFieldVariantName       = "variant_name"
+	fieldValidationFieldProductID         = "product_id"
 )

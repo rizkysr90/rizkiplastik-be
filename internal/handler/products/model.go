@@ -6,6 +6,7 @@ import (
 
 /*Base Data*/
 type VariantObject struct {
+	VariantID       string              `json:"variant_id"`
 	VariantName     *string             `json:"variant_name"`
 	PackagingTypeID string              `json:"packaging_type_id"`
 	SizeValue       float32             `json:"size_value"`

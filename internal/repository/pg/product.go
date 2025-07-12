@@ -29,6 +29,11 @@ const (
 			updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
 	`
+	updateProductQuery = `
+		UPDATE products
+		SET base_name = $1, category_id = $2, updated_by = $3, updated_at = NOW()
+		WHERE id = $4
+	`
 )
 
 func (p *Product) InsertTransaction(
@@ -44,6 +49,23 @@ func (p *Product) InsertTransaction(
 		data.ProductType,
 		data.CreatedBy,
 		data.UpdatedBy,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (p *Product) UpdateTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	data *repository.ProductData,
+) error {
+	_, err := tx.Exec(
+		ctx, updateProductQuery,
+		data.BaseName,
+		data.CategoryID,
+		data.UpdatedBy,
+		data.ID,
 	)
 	if err != nil {
 		return err

@@ -23,6 +23,7 @@ type ProductVariantData struct {
 	CreatedBy       string
 	UpdatedBy       string
 	RepackRecipe    *RepackRecipeData
+	Parent          *ProductData
 }
 
 type ProductVariant interface {
@@ -32,6 +33,16 @@ type ProductVariant interface {
 		variantIDs []string,
 	) ([]ProductVariantData, error)
 	InsertTransaction(
+		ctx context.Context,
+		tx pgx.Tx,
+		data *ProductVariantData,
+	) error
+	FindByProductID(
+		ctx context.Context,
+		tx pgx.Tx,
+		productID string,
+	) ([]ProductVariantData, error)
+	UpdateVariantForProductTypeSingleTransaction(
 		ctx context.Context,
 		tx pgx.Tx,
 		data *ProductVariantData,

@@ -289,7 +289,7 @@ func (pg *ProductSizeUnitRules) UpdateStatusRule(
 	}
 	return nil
 }
-func (pg *ProductSizeUnitRules) FindByCategoryIDAndRuleID(
+func (pg *ProductSizeUnitRules) FindByCategoryIDAndSizeUnitID(
 	ctx context.Context,
 	tx pgx.Tx,
 	categoryID string, sizeUnitID []string,
