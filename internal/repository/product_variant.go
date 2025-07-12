@@ -36,4 +36,14 @@ type ProductVariant interface {
 		tx pgx.Tx,
 		data *ProductVariantData,
 	) error
+	FindByProductID(
+		ctx context.Context,
+		tx pgx.Tx,
+		productID string,
+	) ([]ProductVariantData, error)
+	UpdateVariantForProductTypeSingleTransaction(
+		ctx context.Context,
+		tx pgx.Tx,
+		data *ProductVariantData,
+	) error
 }

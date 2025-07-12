@@ -59,6 +59,27 @@ const (
 			NOW(), 
 			NOW()
 		)`
+	findProductVariantByProductIDQuery = `
+		SELECT 
+			id
+		FROM product_variants
+		WHERE product_id = $1
+		AND is_active = true
+		AND deleted_at IS NULL
+	`
+	updateVariantForProductTypeSingleQuery = `
+		UPDATE product_variants
+		SET packaging_type_id = $1, 
+		size_value = $2, 
+		size_unit_id = $3, 
+		cost_price = $4, 
+		selling_price = $5, 
+		updated_by = $6, 
+		product_name = $7,
+		full_name = $8,
+		updated_at = NOW()
+		WHERE id = $9
+	`
 )
 
 func (p *ProductVariant) FindManyByID(
@@ -109,6 +130,55 @@ func (p *ProductVariant) InsertTransaction(
 		data.IsActive,
 		data.CreatedBy,
 		data.UpdatedBy,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (p *ProductVariant) FindByProductID(
+	ctx context.Context,
+	tx pgx.Tx,
+	productID string,
+) ([]repository.ProductVariantData, error) {
+	rows, err := tx.Query(
+		ctx,
+		findProductVariantByProductIDQuery,
+		productID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	variants := []repository.ProductVariantData{}
+	for rows.Next() {
+		var variant repository.ProductVariantData
+		if err := rows.Scan(&variant.ID); err != nil {
+			return nil, err
+		}
+		variants = append(variants, variant)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return variants, nil
+}
+func (p *ProductVariant) UpdateVariantForProductTypeSingleTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	data *repository.ProductVariantData,
+) error {
+	_, err := tx.Exec(
+		ctx, updateVariantForProductTypeSingleQuery,
+		data.PackagingTypeID,
+		data.SizeValue,
+		data.SizeUnitID,
+		data.CostPrice,
+		data.SellingPrice,
+		data.UpdatedBy,
+		data.ProductName,
+		data.FullName,
+		data.ID,
 	)
 	if err != nil {
 		return err

@@ -29,4 +29,9 @@ type ProductRepository interface {
 		tx pgx.Tx,
 		data *ProductData,
 	) error
+	UpdateTransaction(
+		ctx context.Context,
+		tx pgx.Tx,
+		data *ProductData,
+	) error
 }
